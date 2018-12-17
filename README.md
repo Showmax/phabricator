@@ -94,5 +94,8 @@ func main() {
 ```
 
 ## Shortcomings
-Only \*.search endpoints are supported for now.
-Only Project and Ticket searches can be properly constrained for now.
+* Only \*.search endpoints are supported for now.
+* Only Project and Ticket searches can be properly constrained for now.
+* Logging should use `logrus`
+* Most errors are `Fatal`
+* Probably many more...
