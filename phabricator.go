@@ -31,13 +31,13 @@ const (
 	MAX_BUFFERED_RESPONSES = 100
 )
 
-type EndpointInfo struct {
+type endpointInfo struct {
 	Description string            `json:"description"`
 	Params      map[string]string `json:"params"`
 	Return      string            `json:"return"`
 }
 
-type BaseResponse struct {
+type baseResponse struct {
 	Result struct {
 		Data   []json.RawMessage `json:"data"`
 		Maps   json.RawMessage   `json:"maps"`  // unused
@@ -57,7 +57,7 @@ type PhabResultCallback func(chan<- interface{}, <-chan json.RawMessage) error
 
 type EndpointArguments interface{}
 
-func (ei EndpointInfo) String() string {
+func (ei endpointInfo) String() string {
 	var builder strings.Builder
 	builder.WriteString(fmt.Sprintf("\tDescription: %s\n", ei.Description))
 	builder.WriteString(fmt.Sprintf("\tParams:\n"))
@@ -68,13 +68,13 @@ func (ei EndpointInfo) String() string {
 	return builder.String()
 }
 
-type ConduitQueryResponse struct {
-	Result    map[string]EndpointInfo `json:"result"`
+type conduitQueryResponse struct {
+	Result    map[string]endpointInfo `json:"result"`
 	ErrorCode string                  `json:"error_code"`
 	ErrorInfo string                  `json:"error_info"`
 }
 
-func (cr ConduitQueryResponse) String() string {
+func (cr conduitQueryResponse) String() string {
 	var builder strings.Builder
 	for endpoint, details := range cr.Result {
 		builder.WriteString(fmt.Sprintf("%s:\n%s", endpoint, details))
@@ -82,13 +82,13 @@ func (cr ConduitQueryResponse) String() string {
 	return builder.String()
 }
 
-type EndpointCallback func(endpoint string, params EndpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error)
+type endpointCallback func(endpoint string, params endpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error)
 
 type Phabricator struct {
-	ApiEndpoint *url.URL
-	ApiToken    string
-	ApiInfo     map[string]EndpointInfo
-	endpoints   map[string]EndpointCallback
+	apiEndpoint *url.URL
+	apiToken    string
+	apiInfo     map[string]endpointInfo
+	endpoints   map[string]endpointCallback
 }
 
 func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
@@ -101,15 +101,15 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 		}).Error(err_msg)
 		return nil, PhabricatorError{err_msg}
 	}
-	resp, err := callback(endpoint, p.ApiInfo[endpoint], arguments, cb)
+	resp, err := callback(endpoint, p.apiInfo[endpoint], arguments, cb)
 	return resp, err
 }
 
-func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
-	p.endpoints = make(map[string]EndpointCallback)
+func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
+	p.endpoints = make(map[string]endpointCallback)
 	timeout_duration := time.Duration(5) * time.Second
 	for endpoint := range einfo {
-		eh := func(endpoint string, einfo EndpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
+		eh := func(endpoint string, einfo endpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
 			query_args, err := query.Values(arguments)
 			if err != nil {
 				logger.WithFields(log.Fields{
@@ -119,10 +119,10 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 				return nil, err
 			}
 			data := query_args.Encode()
-			data = fmt.Sprintf("%s=%s&%s", "api.token", p.ApiToken, data)
+			data = fmt.Sprintf("%s=%s&%s", "api.token", p.apiToken, data)
 			data_chan := make(chan json.RawMessage, MAX_BUFFERED_RESPONSES)
 			path, _ := url.Parse(endpoint)
-			ep := p.ApiEndpoint.ResolveReference(path)
+			ep := p.apiEndpoint.ResolveReference(path)
 			go func() {
 				defer close(data_chan)
 				after := ""
@@ -161,7 +161,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 					defer resp.Body.Close() // TODO does this really work?
 					dec := json.NewDecoder(resp.Body)
 					dec.DisallowUnknownFields()
-					var base_resp BaseResponse
+					var base_resp baseResponse
 					err = dec.Decode(&base_resp)
 					if err != nil {
 						logger.WithFields(log.Fields{
@@ -195,10 +195,10 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 	return nil
 }
 
-func (p *Phabricator) queryEndpoints() (map[string]EndpointInfo, error) {
+func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	path, err := url.Parse("conduit.query")
-	phab_conduit_query := p.ApiEndpoint.ResolveReference(path)
-	data := url.Values{"api.token": {p.ApiToken}}
+	phab_conduit_query := p.apiEndpoint.ResolveReference(path)
+	data := url.Values{"api.token": {p.apiToken}}
 	resp, err := http.PostForm(phab_conduit_query.String(), data)
 	logger.WithFields(log.Fields{
 		"status":   resp.Status,
@@ -215,7 +215,7 @@ func (p *Phabricator) queryEndpoints() (map[string]EndpointInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var conduit_api ConduitQueryResponse
+	var conduit_api conduitQueryResponse
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -261,13 +261,13 @@ func (p *Phabricator) Init(endpoint, token string) error {
 		}).Error("Unable to parse the API URL")
 		return PhabricatorError{err.Error()}
 	}
-	p.ApiEndpoint = api
-	p.ApiToken = token
+	p.apiEndpoint = api
+	p.apiToken = token
 	ep, err := p.queryEndpoints()
 	if err != nil {
 		return err
 	}
-	p.ApiInfo = ep
+	p.apiInfo = ep
 
 	err = p.loadEndpoints(ep)
 	if err != nil {
