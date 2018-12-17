@@ -1,4 +1,4 @@
-package main
+package phabricator
 
 import "encoding/json"
 
@@ -24,8 +24,8 @@ type RepositoryUri struct {
 			Protocol   string `json:"protocol"`
 			Identifier string `json:"identifier"`
 		} `json:"builtin"`
-		DateCreated  int `json:"dateCreated"`
-		DateModified int `json:"dateModified"`
+		DateCreated  int64 `json:"dateCreated"`
+		DateModified int64 `json:"dateModified"`
 	} `json:"fields"`
 }
 type Repository struct {
@@ -41,8 +41,8 @@ type Repository struct {
 		IsImporting        bool   `json:"isImporting"`
 		AlmanacServicePHID string `json:"almanacServicePHID"`
 		SpacePHID          string `json:"spacePHID"`
-		DateCreated        int    `json:"dateCreated"`
-		DateModified       int    `json:"dateModified"`
+		DateCreated        int64  `json:"dateCreated"`
+		DateModified       int64  `json:"dateModified"`
 		Policy             struct {
 			View          string `json:"view"`
 			Edit          string `json:"edit"`

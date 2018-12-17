@@ -1,4 +1,4 @@
-package main
+package phabricator
 
 type UserSearchArgs struct {
 }
@@ -10,8 +10,8 @@ type User struct {
 		Username     string   `json:"username"`
 		RealName     string   `json:"realName"`
 		Roles        []string `json:"roles"`
-		DateCreated  int      `json:"dateCreated"`
-		DateModified int      `json:"dateModified"`
+		DateCreated  int64    `json:"dateCreated"`
+		DateModified int64    `json:"dateModified"`
 		Policy       struct {
 			View string `json:"view"`
 			Edit string `json:"edit"`

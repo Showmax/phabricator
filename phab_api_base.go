@@ -1,4 +1,4 @@
-package main
+package phabricator
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	// https://godoc.org/github.com/google/go-querystring/query
@@ -104,21 +103,10 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 	p.endpoints = make(map[string]EndpointCallback)
 	for endpoint := range einfo {
 		eh := func(endpoint string, einfo EndpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
-			//TODO pagination
-			//TODO actually pass the arguments
 			log.Print(endpoint)
 			query_args, _ := query.Values(arguments)
 			data := query_args.Encode()
 			data = fmt.Sprintf("%s=%s&%s", "api.token", p.ApiToken, data)
-			/*
-				for key, val := range arguments {
-							_, ok := einfo.Params[key]
-							if !ok {
-								log.Fatal("%s: Not a valid param for %s", key, endpoint)
-							}
-						data.Add(key, val)
-				}
-			*/
 			data_chan := make(chan json.RawMessage, MAX_BUFFERED_RESPONSES)
 			path, _ := url.Parse(endpoint)
 			ep := p.ApiEndpoint.ResolveReference(path)
@@ -218,48 +206,4 @@ func (p *Phabricator) Init(endpoint, token string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func (t *Ticket) String() string {
-	return fmt.Sprintf("T%d: %s", t.Id, t.Fields.Name)
-}
-
-func (t *Project) String() string {
-	return fmt.Sprintf("[%s|%d]: %s", t.Type, t.Id, t.Fields.Name)
-}
-
-func ProjectResponseCallback(projects chan<- interface{}, data <-chan json.RawMessage) error {
-	for json_data := range data {
-		var p Project
-		err := json.Unmarshal(json_data, &p)
-		if err != nil {
-			log.Fatal(err)
-		}
-		projects <- p
-	}
-	close(projects)
-	return nil // TODO dont ignore
-}
-func TicketResponseCallback(tickets chan<- interface{}, data <-chan json.RawMessage) error {
-	for json_data := range data {
-		var t Ticket
-		err := json.Unmarshal(json_data, &t)
-		if err != nil {
-			log.Fatal(err)
-		}
-		tickets <- t
-	}
-	close(tickets)
-	return nil // TODO dont ignore
-}
-
-func main() {
-	log.SetFlags(log.Lshortfile)
-	phab_conduit_api := "https://phabricator.showmax.cc/api/"
-	token, ok := os.LookupEnv("PHAB_TOKEN")
-	if !ok {
-		log.Fatal("No PHAB_TOKEN in the environment")
-	}
-	var phab Phabricator
-	phab.Init(phab_conduit_api, token)
 }

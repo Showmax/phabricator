@@ -1,4 +1,6 @@
-package main
+package phabricator
+
+import "fmt"
 
 type ProjectSearchArgs struct {
 	QueryKey    string `url:"queryKey"`
@@ -60,8 +62,8 @@ type Project struct {
 			Name string `json:"name"`
 		} `json:"color"`
 		SpacePHID    string `json:"spacePHID"`
-		DateCreated  int    `json:"dateCreated"`
-		DateModified int    `json:"dateModified"`
+		DateCreated  int64  `json:"dateCreated"`
+		DateModified int64  `json:"dateModified"`
 		Policy       struct {
 			View string `json:"view"`
 			Edit string `json:"edit"`
@@ -80,4 +82,8 @@ type Project struct {
 			Ancestors []ProjectAncestor `json:"ancestors"`
 		} `json:"ancestors"`
 	} `json:"attachments"`
+}
+
+func (t *Project) String() string {
+	return fmt.Sprintf("[%s|%d]: %s", t.Type, t.Id, t.Fields.Name)
 }

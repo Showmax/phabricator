@@ -1,4 +1,6 @@
-package main
+package phabricator
+
+import "fmt"
 
 type TicketSearchArgs struct {
 	QueryKey    string `url:"queryKey"`
@@ -22,12 +24,12 @@ type TicketSearchArgs struct {
 		*/
 		ParentIDs     []string `url:"parentIDs,omitempty,brackets"`
 		SubtaskIDs    []string `url:"subtaskIDs,omitempty,brackets"`
-		CreatedStart  int      `url:"createdStart,omitempty"`
-		ModifiedStart int      `url:"modifiedStart,omitempty"`
-		CreatedEnd    int      `url:"createdEnd,omitempty"`
-		ModifiedEnd   int      `url:"modifiedEnd,omitempty"`
-		ClosedStart   int      `url:"closedStart,omitempty"`
-		ClosedEnd     int      `url:"closedEnd,omitempty"`
+		CreatedStart  int64    `url:"createdStart,omitempty"`
+		ModifiedStart int64    `url:"modifiedStart,omitempty"`
+		CreatedEnd    int64    `url:"createdEnd,omitempty"`
+		ModifiedEnd   int64    `url:"modifiedEnd,omitempty"`
+		ClosedStart   int64    `url:"closedStart,omitempty"`
+		ClosedEnd     int64    `url:"closedEnd,omitempty"`
 		CloserPHIDs   []string `url:"closerPHIDs,omitempty"`
 		Query         string   `url:"query,omitempty"`
 		Subscribers   []string `url:"subscribers,omitempty,brackets"`
@@ -71,10 +73,10 @@ type Ticket struct {
 		Points       string `json:"points"`
 		Subtype      string `json:"subtype"`
 		CloserPHID   string `json:"closerPHID"`
-		DateClosed   int    `json:"dateClosed"`
+		DateClosed   int64  `json:"dateClosed"`
 		SpacePHID    string `json:"spacePHID"`
-		DateCreated  int    `json:"dateCreated"`
-		DateModified int    `json:"dateModified"`
+		DateCreated  int64  `json:"dateCreated"`
+		DateModified int64  `json:"dateModified"`
 		Policy       struct {
 			View     string `json:"view"`
 			Interact string `json:"interact"`
@@ -95,4 +97,8 @@ type Ticket struct {
 			ProjectPHIDs []string `json:"projectPHIDs"`
 		} `json:"projects"`
 	} `json:"attachments"`
+}
+
+func (t *Ticket) String() string {
+	return fmt.Sprintf("T%d: %s", t.Id, t.Fields.Name)
 }

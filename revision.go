@@ -1,4 +1,4 @@
-package main
+package phabricator
 
 type RevisionSearchArgs struct {
 }
@@ -28,8 +28,8 @@ type Revision struct {
 		TestPlan       string `json:"testPlan"`
 		IsDraft        bool   `json:"isDraft"`
 		HoldAsDraft    bool   `json:"holdAsDraft"`
-		DateCreated    int    `json:"dateCreated"`
-		DateModified   int    `json:"dateModified"`
+		DateCreated    int64  `json:"dateCreated"`
+		DateModified   int64  `json:"dateModified"`
 		Policy         struct {
 			View string `json:"view"`
 			Edit string `json:"edit"`
