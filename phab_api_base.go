@@ -140,12 +140,10 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 						log.Fatal(err)
 					}
 					defer resp.Body.Close()
-					body, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						log.Fatal(err)
-					}
+					dec := json.NewDecoder(resp.Body)
+					dec.DisallowUnknownFields()
 					var base_resp BaseResponse
-					err = json.Unmarshal(body, &base_resp)
+					err = dec.Decode(&base_resp)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -264,5 +262,4 @@ func main() {
 	}
 	var phab Phabricator
 	phab.Init(phab_conduit_api, token)
-
 }

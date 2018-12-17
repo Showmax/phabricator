@@ -46,16 +46,16 @@ type Project struct {
 			Join string `json:"join"`
 		} `json:"policy"`
 		Description string `json:"description"`
-		Attachments struct {
-			Members struct {
-				Members []ProjectMember `json:"members"`
-			} `json:"members"`
-			Watchers struct {
-				Watchers []ProjectWatcher `json:"watchers"`
-			} `json:"watchers"`
-			Ancestors struct {
-				Ancestors []ProjectAncestor `json:"ancestors"`
-			} `json:"ancestors"`
-		} `json:"attachments"`
 	} `json:"fields"`
+	Attachments struct {
+		Members struct {
+			Members []ProjectMember `json:"members"`
+		} `json:"members"`
+		Watchers struct {
+			Watchers []ProjectWatcher `json:"watchers"`
+		} `json:"watchers"`
+		Ancestors struct {
+			Ancestors []ProjectAncestor `json:"ancestors"`
+		} `json:"ancestors"`
+	} `json:"attachments"`
 }

@@ -80,18 +80,19 @@ type Ticket struct {
 			Interact string `json:"interact"`
 			Edit     string `json:"edit"`
 		} `json:"policy"`
-		Attachments struct {
-			Columns struct {
-				Boards map[string]TicketAttachmentBoard `json:"boards"`
-			} `json:"columns"`
-			Subscribers struct {
-				SubscriberPHIDs    []string `json:"subscriberPHIDs"`
-				SubscriberCount    int      `json:"subscriberCount"`
-				ViewerIsSubscribed bool     `json:"viewerIsSubscribed"`
-			} `json:"subscribers"`
-			Projects struct {
-				ProjectPHIDs []string `json:"projectPHIDs"`
-			} `json:"projects"`
-		} `json:"attachments"`
+		ShowmaxAppVersion string `json:"custom.showmax:app-version"`
 	} `json:"fields"`
+	Attachments struct {
+		Columns struct {
+			Boards map[string]TicketAttachmentBoard `json:"boards"`
+		} `json:"columns"`
+		Subscribers struct {
+			SubscriberPHIDs    []string `json:"subscriberPHIDs"`
+			SubscriberCount    int      `json:"subscriberCount"`
+			ViewerIsSubscribed bool     `json:"viewerIsSubscribed"`
+		} `json:"subscribers"`
+		Projects struct {
+			ProjectPHIDs []string `json:"projectPHIDs"`
+		} `json:"projects"`
+	} `json:"attachments"`
 }
