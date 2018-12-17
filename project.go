@@ -15,7 +15,7 @@ type ProjectSearchArgs struct {
 		Slugs       []string `url:"slugs,omitempty,brackets"`
 		Members     []string `url:"members,omitempty,brackets"`
 		Watchers    []string `url:"watchers,omitempty,brackets"`
-		IsMilestone []bool   `url:"isMilestone,omitempty`
+		IsMilestone bool     `url:"isMilestone,omitempty`
 		Icons       []string `url:"icons,omitempty,brackets"`
 		Colors      []string `url:"colors,omitempty,brackets"`
 		Parents     []string `url:"parents,omitempty,brackets"`
