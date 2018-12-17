@@ -1,3 +1,10 @@
+// Package phabricator provides Phabricator endpoint discovery
+// and helps you consume *.search endpoints.
+// It hides away all the ugly details of Phabricator API:
+// Response pagination
+// API errors
+// Response parsing
+// Creating POST requests
 package phabricator
 
 import (
@@ -48,7 +55,6 @@ type BaseResponse struct {
 
 type PhabResultCallback func(chan<- interface{}, <-chan json.RawMessage) error
 
-// all data must be marshaled into a JSON-string
 type EndpointArguments interface{}
 
 func (ei EndpointInfo) String() string {
