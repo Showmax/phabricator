@@ -10,6 +10,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	// https://godoc.org/github.com/google/go-querystring/query
+	query "github.com/google/go-querystring/query"
 )
 
 type PhabricatorError struct {
@@ -50,7 +53,7 @@ type BaseResponse struct {
 type PhabResultCallback func(chan<- interface{}, <-chan json.RawMessage) error
 
 // all data must be marshaled into a JSON-string
-type EndpointArguments map[string]string
+type EndpointArguments interface{}
 
 func (ei EndpointInfo) String() string {
 	var builder strings.Builder
@@ -67,258 +70,6 @@ type ConduitQueryResponse struct {
 	Result    map[string]EndpointInfo `json:"result"`
 	ErrorCode string                  `json:"error_code"`
 	ErrorInfo string                  `json:"error_info"`
-}
-
-type TicketAttachmentColumn struct {
-	Id   int    `json:"id"`
-	Phid string `json:"phid"`
-	Name string `json:"name"`
-}
-
-type TicketAttachmentBoard struct {
-	Columns []TicketAttachmentColumn `json:"columns"`
-}
-
-type Ticket struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		Name        string `json:"name"`
-		Description struct {
-			Raw string `json:"raw"`
-		} `json:"description"`
-		AuthorPHID string `json:"authorPHID"`
-		OwnerPHID  string `json:"ownerPHID"`
-		Status     struct {
-			Value string `json:"value"`
-			Name  string `json:"name"`
-			Color string `json:"color"`
-		} `json:"status"`
-		Priority struct {
-			Value       int     `json:"value"`
-			Subpriority float64 `json:"subpriority"`
-			Name        string  `json:"name"`
-			Color       string  `json:"color"`
-		} `json:"priority"`
-		Points       string `json:"points"`
-		Subtype      string `json:"subtype"`
-		CloserPHID   string `json:"closerPHID"`
-		DateClosed   int    `json:"dateClosed"`
-		SpacePHID    string `json:"spacePHID"`
-		DateCreated  int    `json:"dateCreated"`
-		DateModified int    `json:"dateModified"`
-		Policy       struct {
-			View     string `json:"view"`
-			Interact string `json:"interact"`
-			Edit     string `json:"edit"`
-		} `json:"policy"`
-		Attachments struct {
-			Columns struct {
-				Boards map[string]TicketAttachmentBoard `json:"boards"`
-			} `json:"columns"`
-			Subscribers struct {
-				SubscriberPHIDs    []string `json:"subscriberPHIDs"`
-				SubscriberCount    int      `json:"subscriberCount"`
-				ViewerIsSubscribed bool     `json:"viewerIsSubscribed"`
-			} `json:"subscribers"`
-			Projects struct {
-				ProjectPHIDs []string `json:"projectPHIDs"`
-			} `json:"projects"`
-		} `json:"attachments"`
-	} `json:"fields"`
-}
-
-type ProjectMember struct {
-	Phid string `json:"phid"`
-}
-
-type ProjectAncestor struct {
-	Id   int    `json:"id"`
-	Phid string `json:"phid"`
-	Name string `json:"name"`
-}
-
-type ProjectWatcher struct {
-	Phid string `json:"phid"`
-}
-
-type Project struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		Name      string `json:"name"`
-		Slug      string `json:"slug"`
-		Milestone int    `json:"milestone"`
-		Depth     int    `json:"depth"`
-		Parent    struct {
-			Id   int    `json:"id"`
-			Phid string `json:"phid"`
-			Name string `json:"name"`
-		} `json:"parent"`
-		Icon struct {
-			Key  string `json:"key"`
-			Name string `json:"name"`
-			Icon string `json:"icon"`
-		} `json:"icon"`
-		Color struct {
-			Key  string `json:"key"`
-			Name string `json:"name"`
-		} `json:"color"`
-		SpacePHID    string `json:"spacePHID"`
-		DateCreated  int    `json:"dateCreated"`
-		DateModified int    `json:"dateModified"`
-		Policy       struct {
-			View string `json:"view"`
-			Edit string `json:"edit"`
-			Join string `json:"join"`
-		} `json:"policy"`
-		Description string `json:"description"`
-		Attachments struct {
-			Members struct {
-				Members []ProjectMember `json:"members"`
-			} `json:"members"`
-			Watchers struct {
-				Watchers []ProjectWatcher `json:"watchers"`
-			} `json:"watchers"`
-			Ancestors struct {
-				Ancestors []ProjectAncestor `json:"ancestors"`
-			} `json:"ancestors"`
-		} `json:"attachments"`
-	} `json:"fields"`
-}
-
-/*
-
- */
-type RepositoryUri struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		RepositoryPHID string `json:"repositoryPHID"`
-		Uri            struct {
-			Raw        string `json:"raw"`
-			Display    string `json:"display"`
-			Effective  string `json:"effective"`
-			Normalized string `json:"normalized"`
-		} `json:"uri"`
-		Io             json.RawMessage // unused
-		Display        json.RawMessage
-		CredentialPHID string `json:"credentialPHID"`
-		Disabled       bool   `json:"disabled"`
-		Builtin        struct {
-			Protocol   string `json:"protocol"`
-			Identifier string `json:"identifier"`
-		} `json:"builtin"`
-		DateCreated  int `json:"dateCreated"`
-		DateModified int `json:"dateModified"`
-	} `json:"fields"`
-}
-
-type RevisionReviewer struct {
-	ReviewerPHID string `json:"reviewerPHID"`
-	Status       string `json:"status"`
-	IsBlocking   bool   `json:"isBlocking"`
-	ActorPHID    string `json:"actorPHID"`
-}
-
-type Revision struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		Title      string `json:"title"`
-		AuthorPHID string `json:"authorPHID"`
-		Status     struct {
-			Value     string `json:"value"`
-			Name      string `json:"name"`
-			Closed    string `json:"closed"`
-			ColorAnsi string `json:"color.ansi"`
-		} `json:"status"`
-		RepositoryPHID string `json:"repositoryPHID"`
-		DiffPHID       string `json:"diffPHID"`
-		Summary        string `json:"summary"`
-		TestPlan       string `json:"testPlan"`
-		IsDraft        bool   `json:"isDraft"`
-		HoldAsDraft    bool   `json:"holdAsDraft"`
-		DateCreated    int    `json:"dateCreated"`
-		DateModified   int    `json:"dateModified"`
-		Policy         struct {
-			View string `json:"view"`
-			Edit string `json:"edit"`
-		} `json:"policy"`
-	} `json:"fields"`
-	Attachments struct {
-		Reviewers struct {
-			Reviewers []RevisionReviewer `json:"reviewers"`
-		} `json:"reviewers"`
-		Subscribers struct {
-			SubscriberPHIDs    []string `json:"subscriberPHIDs"`
-			SubscriberCount    int      `json:"subscriberCount"`
-			ViewerIsSubscribed bool     `json:"viewerIsSubscribed"`
-		} `json:"subscribers"`
-		Projects struct {
-			ProjectPHIDs []string `json:"projectPHIDs"`
-		} `json:"projects"`
-	} `json:"attachments"`
-}
-
-type Repository struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		Name               string `json:"name"`
-		Vcs                string `json:"vcs"`
-		Callsign           string `json:"callsign"`
-		ShortName          string `json:"shortName"`
-		Status             string `json:"status"`
-		IsImporting        bool   `json:"isImporting"`
-		AlmanacServicePHID string `json:"almanacServicePHID"`
-		SpacePHID          string `json:"spacePHID"`
-		DateCreated        int    `json:"dateCreated"`
-		DateModified       int    `json:"dateModified"`
-		Policy             struct {
-			View          string `json:"view"`
-			Edit          string `json:"edit"`
-			DiffusionPush string `json:"diffusion.push"`
-		} `json:"policy"`
-	} `json:"fields"`
-	Attachments struct {
-		Uris struct {
-			Uris []RepositoryUri `json:"uris"`
-		} `json:"uris"`
-		Projects struct {
-			ProjectPHIDs []string `json:"projectPHIDs"`
-		} `json:"projects"`
-	} `json:"attachments"`
-}
-
-type User struct {
-	Id     int    `json:"id"`
-	Type   string `json:"type"`
-	Phid   string `json:"phid"`
-	Fields struct {
-		Username     string   `json:"username"`
-		RealName     string   `json:"realName"`
-		Roles        []string `json:"roles"`
-		DateCreated  int      `json:"dateCreated"`
-		DateModified int      `json:"dateModified"`
-		Policy       struct {
-			View string `json:"view"`
-			Edit string `json:"edit"`
-		} `json:"policy"`
-	} `json:"fields"`
-	Attachments struct {
-		Availability struct {
-			Value string `json:"value"`
-			Until int    `json:"until"`
-			Name  string `json:"name"`
-			Color string `json:"color"`
-		} `json:"availability"`
-	} `json:"attachments"`
 }
 
 func (cr ConduitQueryResponse) String() string {
@@ -355,24 +106,35 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 		eh := func(endpoint string, einfo EndpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
 			//TODO pagination
 			//TODO actually pass the arguments
-			data := url.Values{}
-			data.Add("api.token", p.ApiToken)
-			for key, val := range arguments {
-				/*
-					_, ok := einfo.Params[key]
-					if !ok {
-						log.Fatal("%s: Not a valid param for %s", key, endpoint)
-					}
-				*/
-				data.Add(key, val)
-			}
+			log.Print(endpoint)
+			query_args, _ := query.Values(arguments)
+			data := query_args.Encode()
+			data = fmt.Sprintf("%s=%s&%s", "api.token", p.ApiToken, data)
+			/*
+				for key, val := range arguments {
+							_, ok := einfo.Params[key]
+							if !ok {
+								log.Fatal("%s: Not a valid param for %s", key, endpoint)
+							}
+						data.Add(key, val)
+				}
+			*/
 			data_chan := make(chan json.RawMessage, MAX_BUFFERED_RESPONSES)
 			path, _ := url.Parse(endpoint)
 			ep := p.ApiEndpoint.ResolveReference(path)
 			go func() {
+				after := ""
 				for {
-					log.Print(data.Encode())
-					resp, err := http.PostForm(ep.String(), data)
+					post_data := data
+					if after != "" {
+						post_data = fmt.Sprintf("%s&after=%s", post_data, after)
+					}
+					log.Print(post_data)
+
+					req, err := http.NewRequest("POST", ep.String(), strings.NewReader(post_data))
+					req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+					client := http.Client{}
+					resp, err := client.Do(req)
 					log.Printf("[%s] %s %s", resp.Status, resp.Request.Method, ep.String())
 					if err != nil {
 						log.Fatal(err)
@@ -394,11 +156,10 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 						data_chan <- m
 					}
 
-					after := base_resp.Result.Cursor.After
-					if len(after) == 0 {
+					after = base_resp.Result.Cursor.After
+					if after == "" {
 						break
 					}
-					data.Set("after", after)
 				}
 				close(data_chan)
 			}()
@@ -504,46 +265,4 @@ func main() {
 	var phab Phabricator
 	phab.Init(phab_conduit_api, token)
 
-	ticket_args := make(EndpointArguments)
-	ticket_args["queryKey"] = "authored"
-	/*
-		ticket_attachments := map[string]bool{
-			"columns":     true,
-			"subscribers": true,
-			"projects":    true,
-		}
-		ta, err := json.Marshal(ticket_attachments)
-		ticket_args["attachments"] = string(ta)
-	*/
-	// ticket_args["constraints[statuses][0]"] = "open"
-	ticket_args["constraints"] = `{ "statuses": ["open"] }`
-	ticket_chan, err := phab.Call("maniphest.search", ticket_args, TicketResponseCallback)
-	if err != nil {
-	}
-	for ticket := range ticket_chan {
-		//fmt.Sprintf("T%d\n", ticket.(Ticket).Id)
-		t, _ := ticket.(Ticket)
-		fmt.Println(&t)
-	}
-
-	// ----------------------------------------
-	project_args := make(EndpointArguments)
-	/*
-		project_attachments := map[string]bool{
-			"watchers":  true,
-			"members":   true,
-			"ancestors": true,
-		}
-		pa, err := json.Marshal(project_attachments)
-		project_args["attachments"] = string(pa)
-	*/
-	project_chan, err := phab.Call("project.search", project_args, ProjectResponseCallback)
-	for project := range project_chan {
-		//fmt.Sprintf("T%d\n", ticket.(Ticket).Id)
-		p, _ := project.(Project)
-		fmt.Println(&p)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
 }
