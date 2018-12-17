@@ -1,5 +1,27 @@
 package main
 
+type ProjectSearchArgs struct {
+	QueryKey    string `url:"queryKey"`
+	Attachments struct {
+		Members   bool `url:"members,omitempty"`
+		Watchers  bool `url:"watchers,omitempty"`
+		Ancestors bool `url:"ancestors,omitempty"`
+	} `url:"attachments"`
+	Constraints struct {
+		Ids         []int    `url:"ids,omitempty,brackets"`
+		Phids       []string `url:"phids,omitempty,brackets"`
+		Slugs       []string `url:"slugs,omitempty,brackets"`
+		Members     []string `url:"members,omitempty,brackets"`
+		Watchers    []string `url:"watchers,omitempty,brackets"`
+		IsMilestone []bool   `url:"isMilestone,omitempty`
+		Icons       []string `url:"icons,omitempty,brackets"`
+		Colors      []string `url:"colors,omitempty,brackets"`
+		Parents     []string `url:"parents,omitempty,brackets"`
+		Ancestors   []string `url:"ancestors,omitempty,brackets"`
+		Query       string   `url:"query,omitempty"`
+		Spaces      []string `url:"spaces,omitempty,brackets"`
+	} `url:"constraints"`
+}
 type ProjectMember struct {
 	Phid string `json:"phid"`
 }

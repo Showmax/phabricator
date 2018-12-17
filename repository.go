@@ -2,6 +2,8 @@ package main
 
 import "encoding/json"
 
+type RepositorySearchArgs struct {
+}
 type RepositoryUri struct {
 	Id     int    `json:"id"`
 	Type   string `json:"type"`

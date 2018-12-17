@@ -1,5 +1,7 @@
 package main
 
+type RevisionSearchArgs struct {
+}
 type RevisionReviewer struct {
 	ReviewerPHID string `json:"reviewerPHID"`
 	Status       string `json:"status"`
@@ -17,7 +19,7 @@ type Revision struct {
 		Status     struct {
 			Value     string `json:"value"`
 			Name      string `json:"name"`
-			Closed    string `json:"closed"`
+			Closed    bool   `json:"closed"`
 			ColorAnsi string `json:"color.ansi"`
 		} `json:"status"`
 		RepositoryPHID string `json:"repositoryPHID"`

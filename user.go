@@ -1,5 +1,7 @@
 package main
 
+type UserSearchArgs struct {
+}
 type User struct {
 	Id     int    `json:"id"`
 	Type   string `json:"type"`
