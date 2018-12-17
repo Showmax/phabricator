@@ -147,6 +147,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 					logger.WithFields(log.Fields{
 						"status":   resp.Status,
 						"method":   resp.Request.Method,
+						"data":     post_data, // TODO: This logs the API token as well :(
 						"endpoint": ep.String(),
 					}).Info("HTTP Request")
 					if err != nil {
