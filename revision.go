@@ -1,6 +1,26 @@
 package phabricator
 
 type RevisionSearchArgs struct {
+	QueryKey    string `url:"queryKey"`
+	Attachments struct {
+		Reviewers   bool `url:"reviewers,omitempty"`
+		Subscribers bool `url:"subscribers,omitempty"`
+		Projects    bool `url:"projects,omitempty"`
+	} `url:"attachments"`
+	Constraints struct {
+		Ids              []int    `url:"ids,omitempty,brackets"`
+		Phids            []string `url:"phids,omitempty,brackets"`
+		ResponsiblePHIDs []string `url:"responsiblePHIDs,omitempty,brackets"`
+		AuthorPHIDs      []string `url:"authorPHIDs,omitempty,brackets"`
+		ReviewerPHIDs    []string `url:"reviewerPHIDs,omitempty,brackets"`
+		repositoryPHIDs  []string `url:"repositoryPHIDs,omitempty,brackets"`
+		Statuses         []string `url:"statuses,omitempty,brackets"`
+		CreatedStart     int64    `url:"createdStart,omitempty"`
+		CreatedEnd       int64    `url:"createdEnd,omitempty"`
+		Query            string   `url:"query,omitempty"`
+		Subscribers      []string `url:"subscribers,omitempty,brackets"`
+		Projects         []string `url:"projects,omitempty,brackets"`
+	} `url:"constraints,omitempty"`
 }
 type RevisionReviewer struct {
 	ReviewerPHID string `json:"reviewerPHID"`

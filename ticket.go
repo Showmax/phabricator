@@ -10,18 +10,16 @@ type TicketSearchArgs struct {
 		Projects    bool `url:"projects,omitempty"`
 	} `url:"attachments"`
 	Constraints struct {
-		Ids         []int    `url:"ids,omitempty,brackets"`
-		Phids       []string `url:"phids,omitempty,brackets"`
-		Assigned    []string `url:"assigned,omitempty,brackets"`
-		AuthorPHIDs []string `url:"authorPHIDs,omitempty,brackets"`
-		Statuses    []string `url:"statuses,omitempty,brackets"`
-		Priorities  []int    `url:"priorities,omitempty,brackets"`
-		Aubtypes    []string `url:"subtypes,omitempty,brackets"`
-		ColumnPHIDs []string `url:"columnPHIDs,omitempty,brackets"`
-		/*
-			hasParents
-			hasSubtasks
-		*/
+		Ids           []int    `url:"ids,omitempty,brackets"`
+		Phids         []string `url:"phids,omitempty,brackets"`
+		Assigned      []string `url:"assigned,omitempty,brackets"`
+		AuthorPHIDs   []string `url:"authorPHIDs,omitempty,brackets"`
+		Statuses      []string `url:"statuses,omitempty,brackets"`
+		Priorities    []int    `url:"priorities,omitempty,brackets"`
+		Aubtypes      []string `url:"subtypes,omitempty,brackets"`
+		ColumnPHIDs   []string `url:"columnPHIDs,omitempty,brackets"`
+		HasParents    bool     `url:"hasParents,omitempty"`
+		HasSubtasks   bool     `url:"hasSubtasks,omitempty"`
 		ParentIDs     []string `url:"parentIDs,omitempty,brackets"`
 		SubtaskIDs    []string `url:"subtaskIDs,omitempty,brackets"`
 		CreatedStart  int64    `url:"createdStart,omitempty"`

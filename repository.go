@@ -3,6 +3,22 @@ package phabricator
 import "encoding/json"
 
 type RepositorySearchArgs struct {
+	QueryKey    string `url:"queryKey"`
+	Attachments struct {
+		Uris     bool `url:"uris,omitempty"`
+		Projects bool `url:"projects,omitempty"`
+	} `url:"attachments"`
+	Constraints struct {
+		Ids        []int    `url:"ids,omitempty,brackets"`
+		Phids      []string `url:"phids,omitempty,brackets"`
+		Callsigns  []string `url:"callsigns,omitempty,brackets"`
+		ShortNames []string `url:"shortNames,omitempty,brackets"`
+		Types      []string `url:"types,omitempty,brackets"`
+		Uris       []string `url:"uris,omitempty,brackets"`
+		Query      string   `url:"query,omitempty"`
+		Projects   []string `url:"projects,omitempty,brackets"`
+		Spaces     []string `url:"spaces,omitempty,brackets"`
+	} `url:"constraints,omitempty"`
 }
 type RepositoryUri struct {
 	Id     int    `json:"id"`
