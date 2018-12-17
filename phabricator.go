@@ -5,22 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	// https://godoc.org/github.com/google/go-querystring/query
 	query "github.com/google/go-querystring/query"
+
+	// https://github.com/Sirupsen/logrus
+	log "github.com/sirupsen/logrus"
 )
 
-type PhabricatorError struct {
-	err string
-}
-
-func (pe PhabricatorError) Error() string {
-	return pe.err
-}
+var logger = log.New()
 
 const (
 	// Phabricator paginates responses in pages of 100 results.
@@ -91,8 +88,11 @@ type Phabricator struct {
 func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
 	callback, defined := p.endpoints[endpoint]
 	if !defined {
-		err_msg := fmt.Sprintf("No callback defined for endpoint '%s'", endpoint)
-		log.Print(err_msg)
+		err_msg := "No callback defined for endpoint"
+
+		logger.WithFields(log.Fields{
+			"endpoint": endpoint,
+		}).Error(err_msg)
 		return nil, PhabricatorError{err_msg}
 	}
 	resp, err := callback(endpoint, p.ApiInfo[endpoint], arguments, cb)
@@ -101,42 +101,73 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 
 func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 	p.endpoints = make(map[string]EndpointCallback)
+	timeout_duration := time.Duration(5) * time.Second
 	for endpoint := range einfo {
 		eh := func(endpoint string, einfo EndpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
-			log.Print(endpoint)
-			query_args, _ := query.Values(arguments)
+			query_args, err := query.Values(arguments)
+			if err != nil {
+				logger.WithFields(log.Fields{
+					"error":    err,
+					"endpoint": endpoint,
+				}).Error("Failed to encode endpoint query arguments")
+				return nil, err
+			}
 			data := query_args.Encode()
 			data = fmt.Sprintf("%s=%s&%s", "api.token", p.ApiToken, data)
 			data_chan := make(chan json.RawMessage, MAX_BUFFERED_RESPONSES)
 			path, _ := url.Parse(endpoint)
 			ep := p.ApiEndpoint.ResolveReference(path)
 			go func() {
+				defer close(data_chan)
 				after := ""
 				for {
 					post_data := data
 					if after != "" {
 						post_data = fmt.Sprintf("%s&after=%s", post_data, after)
 					}
-					log.Print(post_data)
 
 					req, err := http.NewRequest("POST", ep.String(), strings.NewReader(post_data))
+					if err != nil {
+						logger.WithFields(log.Fields{
+							"method": endpoint,
+							"data":   post_data, // TODO: This logs the API token as well :(
+						}).Error("Failed to construct a HTTP request")
+						return
+					}
 					req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 					client := http.Client{}
+					client.Timeout = timeout_duration
 					resp, err := client.Do(req)
-					log.Printf("[%s] %s %s", resp.Status, resp.Request.Method, ep.String())
+					logger.WithFields(log.Fields{
+						"status":   resp.Status,
+						"method":   resp.Request.Method,
+						"endpoint": ep.String(),
+					}).Info("HTTP Request")
 					if err != nil {
-						log.Fatal(err)
+						logger.WithFields(log.Fields{
+							"status":   resp.Status,
+							"method":   resp.Request.Method,
+							"endpoint": ep.String(),
+						}).Error("HTTP Request failed")
+						return
 					}
-					defer resp.Body.Close()
+					defer resp.Body.Close() // TODO does this really work?
 					dec := json.NewDecoder(resp.Body)
 					dec.DisallowUnknownFields()
 					var base_resp BaseResponse
 					err = dec.Decode(&base_resp)
 					if err != nil {
-						log.Fatal(err)
+						logger.WithFields(log.Fields{
+							"error": err,
+						}).Error("Failed to decode JSON")
+						return
 					}
 					if base_resp.ErrorCode != "" {
-						log.Fatal(base_resp.ErrorCode, base_resp.ErrorInfo)
+						logger.WithFields(log.Fields{
+							"PhabricatorErrorCode": base_resp.ErrorCode,
+							"PhabricatorErrorInfo": base_resp.ErrorInfo,
+						}).Error("Invalid Phabricator Request")
+						return
 					}
 					for _, m := range base_resp.Result.Data {
 						data_chan <- m
@@ -144,10 +175,9 @@ func (p *Phabricator) loadEndpoints(einfo map[string]EndpointInfo) error {
 
 					after = base_resp.Result.Cursor.After
 					if after == "" {
-						break
+						return
 					}
 				}
-				close(data_chan)
 			}()
 			result_chan := make(chan interface{})
 			go cb(result_chan, data_chan)
@@ -163,14 +193,28 @@ func (p *Phabricator) queryEndpoints() (map[string]EndpointInfo, error) {
 	phab_conduit_query := p.ApiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.ApiToken}}
 	resp, err := http.PostForm(phab_conduit_query.String(), data)
-	log.Printf("[%s] %s %s", resp.Status, resp.Request.Method, phab_conduit_query.String())
+	logger.WithFields(log.Fields{
+		"status":   resp.Status,
+		"method":   resp.Request.Method,
+		"endpoint": phab_conduit_query.String(),
+	}).Info("HTTP Request")
 	if err != nil {
-		log.Fatal(err)
+		logger.WithFields(log.Fields{
+			"error":    err,
+			"status":   resp.Status,
+			"method":   resp.Request.Method,
+			"endpoint": phab_conduit_query.String(),
+		}).Error("HTTP Request failed")
+		return nil, err
 	}
+	defer resp.Body.Close()
 	var conduit_api ConduitQueryResponse
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Error("Failed to read HTTP response")
+		return nil, err
 	}
 	// Phabricator's JSON responses are absolute garbage
 	// so we normalize the result here. I haven't found ANY way
@@ -178,32 +222,50 @@ func (p *Phabricator) queryEndpoints() (map[string]EndpointInfo, error) {
 	body = bytes.Replace(body, []byte(`"params":[]`), []byte(`"params":{}`), -1)
 
 	err = json.Unmarshal(body, &conduit_api)
-	//TODO return err
 	if err != nil {
-		log.Fatal(err)
+		logger.WithFields(log.Fields{
+			"error": err,
+		}).Error("Failed to decode JSON")
+		return nil, err
 	}
 	if conduit_api.ErrorCode != "" {
+		logger.WithFields(log.Fields{
+			"PhabricatorErrorCode": conduit_api.ErrorCode,
+			"PhabricatorErrorInfo": conduit_api.ErrorInfo,
+		}).Error("Invalid Phabricator Request")
 		err_msg := fmt.Sprintf("[%s] %s", conduit_api.ErrorCode, conduit_api.ErrorInfo)
-		log.Printf(err_msg)
 		return nil, PhabricatorError{err_msg}
 	}
 	return conduit_api.Result, nil
 }
 
-func (p *Phabricator) Init(endpoint, token string) {
+func (p *Phabricator) Init(endpoint, token string) error {
+	logger.SetLevel(log.InfoLevel)
+
+	logger.WithFields(log.Fields{
+		"url": endpoint,
+	}).Debug("Initializing a Phabricator instance")
+
 	api, err := url.Parse(endpoint)
 	if err != nil {
-		log.Fatal(err)
+		logger.WithFields(log.Fields{
+			"url":   endpoint,
+			"error": err,
+		}).Error("Unable to parse the API URL")
+		return PhabricatorError{err.Error()}
 	}
 	p.ApiEndpoint = api
 	p.ApiToken = token
 	ep, err := p.queryEndpoints()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	p.ApiInfo = ep
+
 	err = p.loadEndpoints(ep)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
