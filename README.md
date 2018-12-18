@@ -95,5 +95,4 @@ func main() {
 
 ## Shortcomings
 * Only \*.search endpoints are supported for now.
-* Only Project and Ticket searches can be properly constrained for now.
 * Probably many more...
