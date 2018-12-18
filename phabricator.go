@@ -144,20 +144,19 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 					client := http.Client{}
 					client.Timeout = timeout_duration
 					resp, err := client.Do(req)
+					if err != nil {
+						logger.WithFields(log.Fields{
+							"error":    err,
+							"endpoint": ep.String(),
+						}).Error("HTTP Request failed")
+						return
+					}
 					logger.WithFields(log.Fields{
 						"status":   resp.Status,
 						"method":   resp.Request.Method,
 						"data":     post_data, // TODO: This logs the API token as well :(
 						"endpoint": ep.String(),
 					}).Info("HTTP Request")
-					if err != nil {
-						logger.WithFields(log.Fields{
-							"status":   resp.Status,
-							"method":   resp.Request.Method,
-							"endpoint": ep.String(),
-						}).Error("HTTP Request failed")
-						return
-					}
 					defer resp.Body.Close() // TODO does this really work?
 					dec := json.NewDecoder(resp.Body)
 					dec.DisallowUnknownFields()
@@ -200,20 +199,18 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	phab_conduit_query := p.apiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.apiToken}}
 	resp, err := http.PostForm(phab_conduit_query.String(), data)
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"error":    err,
+			"endpoint": phab_conduit_query.String(),
+		}).Error("HTTP Request failed")
+		return nil, err
+	}
 	logger.WithFields(log.Fields{
 		"status":   resp.Status,
 		"method":   resp.Request.Method,
 		"endpoint": phab_conduit_query.String(),
 	}).Info("HTTP Request")
-	if err != nil {
-		logger.WithFields(log.Fields{
-			"error":    err,
-			"status":   resp.Status,
-			"method":   resp.Request.Method,
-			"endpoint": phab_conduit_query.String(),
-		}).Error("HTTP Request failed")
-		return nil, err
-	}
 	defer resp.Body.Close()
 	var conduit_api conduitQueryResponse
 	body, err := ioutil.ReadAll(resp.Body)
