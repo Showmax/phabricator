@@ -21,7 +21,7 @@ type RepositorySearchArgs struct {
 	} `url:"constraints,omitempty"`
 }
 type RepositoryUri struct {
-	Id     int    `json:"id"`
+	Id     string `json:"id"`
 	Type   string `json:"type"`
 	Phid   string `json:"phid"`
 	Fields struct {
@@ -40,8 +40,8 @@ type RepositoryUri struct {
 			Protocol   string `json:"protocol"`
 			Identifier string `json:"identifier"`
 		} `json:"builtin"`
-		DateCreated  int64 `json:"dateCreated"`
-		DateModified int64 `json:"dateModified"`
+		DateCreated  string `json:"dateCreated"`
+		DateModified string `json:"dateModified"`
 	} `json:"fields"`
 }
 type Repository struct {
