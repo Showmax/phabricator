@@ -10,6 +10,7 @@ package phabricator
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -260,6 +261,8 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 		}
 		if opts.Timeout > 0 {
 			p.timeout = opts.Timeout
+		} else {
+			return errors.New("Negative timeout specified")
 		}
 	}
 	p.client = &http.Client{Timeout: p.timeout}
@@ -270,10 +273,6 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 	}
 	logger.SetLevel(level)
 
-	logger.WithFields(log.Fields{
-		"url": endpoint,
-	}).Debug("Initializing a Phabricator instance")
-
 	api, err := url.Parse(endpoint)
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -282,6 +281,13 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 		}).Error("Unable to parse the API URL")
 		return PhabricatorError{err.Error()}
 	}
+
+	logger.WithFields(log.Fields{
+		"url":      endpoint,
+		"loglevel": loglevel,
+		"timeout":  p.timeout,
+	}).Debug("Initializing a Phabricator instance")
+
 	p.apiEndpoint = api
 	p.apiToken = token
 	ep, err := p.queryEndpoints()
