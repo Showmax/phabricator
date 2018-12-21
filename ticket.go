@@ -3,7 +3,7 @@ package phabricator
 import "fmt"
 
 type TicketSearchArgs struct {
-	QueryKey    string `url:"queryKey"`
+	QueryKey    string `url:"queryKey,omitempty"`
 	Attachments struct {
 		Columns     bool `url:"columns,omitempty"`
 		Subscribers bool `url:"subscribers,omitempty"`

@@ -3,7 +3,7 @@ package phabricator
 import "fmt"
 
 type ProjectSearchArgs struct {
-	QueryKey    string `url:"queryKey"`
+	QueryKey    string `url:"queryKey,omitempty"`
 	Attachments struct {
 		Members   bool `url:"members,omitempty"`
 		Watchers  bool `url:"watchers,omitempty"`

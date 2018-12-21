@@ -1,7 +1,7 @@
 package phabricator
 
 type UserSearchArgs struct {
-	QueryKey    string `url:"queryKey"`
+	QueryKey    string `url:"queryKey,omitempty"`
 	Attachments struct {
 		Availability bool `url:"availability,omitempty"`
 	} `url:"attachments"`

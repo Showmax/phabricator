@@ -108,7 +108,7 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 	return resp, err
 }
 
-func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
+func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 	p.endpoints = make(map[string]endpointCallback)
 	for endpoint := range einfo {
 		logger.WithFields(log.Fields{
@@ -140,8 +140,8 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 					req, err := http.NewRequest("POST", ep.String(), strings.NewReader(post_data))
 					if err != nil {
 						logger.WithFields(log.Fields{
-							"method": endpoint,
-							"data":   post_data, // TODO: This logs the API token as well :(
+							"method":    endpoint,
+							"post_data": query_args.Encode(),
 						}).Error("Failed to construct a HTTP request")
 						return
 					}
@@ -150,17 +150,19 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 					if err != nil {
 						logger.WithFields(log.Fields{
 							"error":    err,
-							"endpoint": ep.String(),
+							"endpoint": endpoint,
+							"after":    after,
 						}).Error("HTTP Request failed")
 						return
 					}
 					logger.WithFields(log.Fields{
-						"status":   resp.Status,
-						"method":   resp.Request.Method,
-						"data":     post_data, // TODO: This logs the API token as well :(
-						"endpoint": ep.String(),
+						"status":    resp.Status,
+						"method":    resp.Request.Method,
+						"post_data": query_args.Encode(),
+						"endpoint":  endpoint,
+						"after":     after,
 					}).Info("HTTP Request")
-					defer resp.Body.Close() // TODO does this really work?
+					defer resp.Body.Close()
 					dec := json.NewDecoder(resp.Body)
 					dec.DisallowUnknownFields()
 					var base_resp baseResponse
@@ -190,18 +192,16 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 			}()
 			result_chan := make(chan interface{})
 			go cb(result_chan, data_chan)
-			return result_chan, nil // TODO
+			return result_chan, nil
 		}
 		p.endpoints[endpoint] = eh
 	}
-	return nil
 }
 
 func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	path, _ := url.Parse("conduit.query")
 	phab_conduit_query := p.apiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.apiToken}}
-	// TODO timeout
 	resp, err := p.client.PostForm(phab_conduit_query.String(), data)
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -294,12 +294,9 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 	if err != nil {
 		return err
 	}
-	p.apiInfo = ep
 
-	err = p.loadEndpoints(ep)
-	if err != nil {
-		return err
-	}
+	p.apiInfo = ep
+	p.loadEndpoints(ep)
 
 	return nil
 }

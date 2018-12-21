@@ -3,7 +3,7 @@ package phabricator
 import "encoding/json"
 
 type RepositorySearchArgs struct {
-	QueryKey    string `url:"queryKey"`
+	QueryKey    string `url:"queryKey,omitempty"`
 	Attachments struct {
 		Uris     bool `url:"uris,omitempty"`
 		Projects bool `url:"projects,omitempty"`

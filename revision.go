@@ -1,7 +1,7 @@
 package phabricator
 
 type RevisionSearchArgs struct {
-	QueryKey    string `url:"queryKey"`
+	QueryKey    string `url:"queryKey,omitempty"`
 	Attachments struct {
 		Reviewers   bool `url:"reviewers,omitempty"`
 		Subscribers bool `url:"subscribers,omitempty"`
