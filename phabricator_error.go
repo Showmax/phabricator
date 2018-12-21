@@ -1,9 +1,9 @@
 package phabricator
 
-type PhabricatorError struct {
+type Error struct {
 	err string
 }
 
-func (pe PhabricatorError) Error() string {
+func (pe Error) Error() string {
 	return pe.err
 }
