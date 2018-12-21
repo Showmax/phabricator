@@ -42,6 +42,7 @@ import (
 	"time"
 
 	"go.showmax.cc/phabricator"
+	phab_types "go.showmax.cc/phabricator/types"
 )
 
 /*
@@ -51,7 +52,7 @@ It's up to the callback to parse the objects.
 func TicketResponseCallback(tickets chan<- interface{}, data <-chan json.RawMessage) error {
 	defer close(tickets)
 	for json_data := range data {
-		var t phabricator.Ticket
+		var t phab_types.Ticket
 		err := json.Unmarshal(json_data, &t)
 		if err != nil {
 			return err
@@ -74,7 +75,7 @@ func main() {
 
 	/* Create constraints for the search:
 	 */
-	ticket_args := phabricator.TicketSearchArgs{}
+	ticket_args := phab_types.TicketSearchArgs{}
 
 	// Include the PHIDs of people watching the tickets in the results
 	ticket_args.Attachments.Subscribers = true
@@ -90,7 +91,7 @@ func main() {
 		log.Fatal(err)
 	}
 	for t := range tickets {
-		ticket := t.(phabricator.Ticket)
+		ticket := t.(phab_types.Ticket)
 		fmt.Printf("T%d: %s\n", ticket.Id, ticket.Fields.Name)
 	}
 }
