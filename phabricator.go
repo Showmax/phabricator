@@ -95,7 +95,7 @@ type Phabricator struct {
 }
 
 func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
-	callback, defined := p.endpoints[endpoint]
+	handler, defined := p.endpoints[endpoint]
 	if !defined {
 		err_msg := "No callback defined for endpoint"
 
@@ -104,7 +104,7 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 		}).Error(err_msg)
 		return nil, PhabricatorError{err_msg}
 	}
-	resp, err := callback(endpoint, p.apiInfo[endpoint], arguments, cb)
+	resp, err := handler(endpoint, p.apiInfo[endpoint], arguments, cb)
 	return resp, err
 }
 
