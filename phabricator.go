@@ -89,6 +89,8 @@ type Phabricator struct {
 	apiToken    string
 	apiInfo     map[string]endpointInfo
 	endpoints   map[string]endpointCallback
+	client      *http.Client
+	timeout     time.Duration
 }
 
 func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
@@ -107,8 +109,10 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 
 func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 	p.endpoints = make(map[string]endpointCallback)
-	timeout_duration := time.Duration(5) * time.Second
 	for endpoint := range einfo {
+		logger.WithFields(log.Fields{
+			"endpoint": endpoint,
+		}).Debug("Defining callback for endpoint")
 		eh := func(endpoint string, einfo endpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error) {
 			query_args, err := query.Values(arguments)
 			if err != nil {
@@ -141,9 +145,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 						return
 					}
 					req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-					client := http.Client{}
-					client.Timeout = timeout_duration
-					resp, err := client.Do(req)
+					resp, err := p.client.Do(req)
 					if err != nil {
 						logger.WithFields(log.Fields{
 							"error":    err,
@@ -198,7 +200,8 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	path, err := url.Parse("conduit.query")
 	phab_conduit_query := p.apiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.apiToken}}
-	resp, err := http.PostForm(phab_conduit_query.String(), data)
+	// TODO timeout
+	resp, err := p.client.PostForm(phab_conduit_query.String(), data)
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"error":    err,
@@ -243,8 +246,29 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	return conduit_api.Result, nil
 }
 
-func (p *Phabricator) Init(endpoint, token string) error {
-	logger.SetLevel(log.InfoLevel)
+type PhabOptions struct {
+	LogLevel string
+	Timeout  time.Duration
+}
+
+func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
+	loglevel := "info"
+	p.timeout = 10 * time.Second
+	if opts != nil {
+		if opts.LogLevel != "" {
+			loglevel = opts.LogLevel
+		}
+		if opts.Timeout > 0 {
+			p.timeout = opts.Timeout
+		}
+	}
+	p.client = &http.Client{Timeout: p.timeout}
+
+	level, err := log.ParseLevel(loglevel)
+	if err != nil {
+		return err
+	}
+	logger.SetLevel(level)
 
 	logger.WithFields(log.Fields{
 		"url": endpoint,

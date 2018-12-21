@@ -67,7 +67,10 @@ current use in the past week.
 */
 func main() {
 	var phab phabricator.Phabricator
-	phab.Init("https://phabricator.showmax.cc/api/", "<API_TOKEN>")
+	phab.Init("https://phabricator.showmax.cc/api/", "<API_TOKEN>", &phabricator.PhabOptions{
+		LogLevel: "info", // Must be a level recognized by the logrus library
+		Timeout: 10 * time.Second,
+	})
 
 	/* Create constraints for the search:
 	 */
