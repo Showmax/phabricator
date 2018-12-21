@@ -13,7 +13,7 @@ type RevisionSearchArgs struct {
 		ResponsiblePHIDs []string `url:"responsiblePHIDs,omitempty,brackets"`
 		AuthorPHIDs      []string `url:"authorPHIDs,omitempty,brackets"`
 		ReviewerPHIDs    []string `url:"reviewerPHIDs,omitempty,brackets"`
-		repositoryPHIDs  []string `url:"repositoryPHIDs,omitempty,brackets"`
+		RepositoryPHIDs  []string `url:"repositoryPHIDs,omitempty,brackets"`
 		Statuses         []string `url:"statuses,omitempty,brackets"`
 		CreatedStart     int64    `url:"createdStart,omitempty"`
 		CreatedEnd       int64    `url:"createdEnd,omitempty"`

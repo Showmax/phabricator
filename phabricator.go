@@ -198,7 +198,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) error {
 }
 
 func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
-	path, err := url.Parse("conduit.query")
+	path, _ := url.Parse("conduit.query")
 	phab_conduit_query := p.apiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.apiToken}}
 	// TODO timeout
