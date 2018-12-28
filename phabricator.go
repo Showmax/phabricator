@@ -319,6 +319,8 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 		return err
 	}
 	logger.SetLevel(level)
+	// Display file & line info - needs a relatively new version of logrus
+	logger.SetReportCaller(true)
 
 	api, err := url.Parse(endpoint)
 	if err != nil {
