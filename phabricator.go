@@ -25,6 +25,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type norm_regex struct {
+	from []byte
+	to   []byte
+}
+
+var normalization map[string]norm_regex
+
+// Phabricator's JSON responses are absolute garbage
+// so we normalize the result here - if a map-type field
+// in the response is empty, phab responds with an array instead.
+// I haven't found ANY way
+// to make this more sane. The below rules are handcrafted,
+// but it calls for a much more systematic solution.
+//
+// TODO: Something like reflecting on the response type
+// and substituting for all empty map-types
+func init() {
+	normalization = map[string]norm_regex{
+		"maniphest.search": norm_regex{
+			from: []byte(`"boards":[]`),
+			to:   []byte(`"boards":{}`),
+		},
+		"conduit.query": norm_regex{
+			from: []byte(`"params":[]`),
+			to:   []byte(`"params":{}`),
+		},
+	}
+}
+
 var logger = log.New()
 
 const (
@@ -169,10 +198,20 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 						"after":     after,
 					}).Info("HTTP Request")
 					defer resp.Body.Close()
-					dec := json.NewDecoder(resp.Body)
-					dec.DisallowUnknownFields()
+
+					body, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						logger.WithFields(log.Fields{
+							"error": err,
+						}).Error("Failed to read HTTP response")
+						return
+					}
+					norm, exists := normalization[endpoint]
+					if exists {
+						body = bytes.Replace(body, norm.from, norm.to, -1)
+					}
 					var baseResp baseResponse
-					err = dec.Decode(&baseResp)
+					err = json.Unmarshal(body, &baseResp)
 					if err != nil {
 						logger.WithFields(log.Fields{
 							"error": err,
@@ -205,7 +244,8 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 }
 
 func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
-	path, _ := url.Parse("conduit.query")
+	endpoint := "conduit.query"
+	path, _ := url.Parse(endpoint)
 	phabConduitQuery := p.apiEndpoint.ResolveReference(path)
 	data := url.Values{"api.token": {p.apiToken}}
 	resp, err := p.client.PostForm(phabConduitQuery.String(), data)
@@ -230,10 +270,10 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 		}).Error("Failed to read HTTP response")
 		return nil, err
 	}
-	// Phabricator's JSON responses are absolute garbage
-	// so we normalize the result here. I haven't found ANY way
-	// to make this more sane
-	body = bytes.Replace(body, []byte(`"params":[]`), []byte(`"params":{}`), -1)
+	norm, exists := normalization[endpoint]
+	if exists {
+		body = bytes.Replace(body, norm.from, norm.to, -1)
+	}
 
 	err = json.Unmarshal(body, &conduitApi)
 	if err != nil {
