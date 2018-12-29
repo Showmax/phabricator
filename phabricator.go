@@ -25,12 +25,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type norm_regex struct {
+type normRegex struct {
 	from []byte
 	to   []byte
 }
 
-var normalization map[string]norm_regex
+var normalization map[string]normRegex
 
 // Phabricator's JSON responses are absolute garbage
 // so we normalize the result here - if a map-type field
@@ -42,12 +42,12 @@ var normalization map[string]norm_regex
 // TODO: Something like reflecting on the response type
 // and substituting for all empty map-types
 func init() {
-	normalization = map[string]norm_regex{
-		"maniphest.search": norm_regex{
+	normalization = map[string]normRegex{
+		"maniphest.search": normRegex{
 			from: []byte(`"boards":[]`),
 			to:   []byte(`"boards":{}`),
 		},
-		"conduit.query": norm_regex{
+		"conduit.query": normRegex{
 			from: []byte(`"params":[]`),
 			to:   []byte(`"params":{}`),
 		},
@@ -83,11 +83,14 @@ type baseResponse struct {
 	ErrorInfo string `json:"error_info"`
 }
 
-// A function of type PhabResultCallback is called by Phabricator.Call.
+// PhabResultCallback specified the function type of the callback used by Phabricator.Call.
 // It is given an IN channel to feed the callback JSON and out channel
 // that is also returned to the caller of Phabricator.Call.
 type PhabResultCallback func(out chan<- interface{}, in <-chan json.RawMessage) error
 
+// EndpointArguments should be a struct
+// that represents the postform data passed to
+// phabricator endpoints
 type EndpointArguments interface{}
 
 func (ei endpointInfo) String() string {
@@ -117,7 +120,8 @@ func (cr conduitQueryResponse) String() string {
 
 type endpointCallback func(endpoint string, params endpointInfo, arguments EndpointArguments, cb PhabResultCallback) (<-chan interface{}, error)
 
-// An instance of Phabricator bound to a single API root
+// Phabricator wraps around the API calls
+// bound to a single API root
 type Phabricator struct {
 	apiEndpoint *url.URL
 	apiToken    string
@@ -160,11 +164,11 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 			}
 			data := queryArgs.Encode()
 			data = fmt.Sprintf("%s=%s&%s", "api.token", p.apiToken, data)
-			data_chan := make(chan json.RawMessage, maxBufferedResponses)
+			dataChan := make(chan json.RawMessage, maxBufferedResponses)
 			path, _ := url.Parse(endpoint)
 			ep := p.apiEndpoint.ResolveReference(path)
 			go func() {
-				defer close(data_chan)
+				defer close(dataChan)
 				after := ""
 				for {
 					postData := data
@@ -226,7 +230,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 						return
 					}
 					for _, m := range baseResp.Result.Data {
-						data_chan <- m
+						dataChan <- m
 					}
 
 					after = baseResp.Result.Cursor.After
@@ -236,7 +240,7 @@ func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
 				}
 			}()
 			resultChan := make(chan interface{})
-			go cb(resultChan, data_chan)
+			go cb(resultChan, dataChan)
 			return resultChan, nil
 		}
 		p.endpoints[endpoint] = eh
@@ -262,7 +266,7 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 		"endpoint": phabConduitQuery.String(),
 	}).Info("HTTP Request")
 	defer resp.Body.Close()
-	var conduitApi conduitQueryResponse
+	var conduitAPI conduitQueryResponse
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.WithFields(log.Fields{
@@ -275,30 +279,33 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 		body = bytes.Replace(body, norm.from, norm.to, -1)
 	}
 
-	err = json.Unmarshal(body, &conduitApi)
+	err = json.Unmarshal(body, &conduitAPI)
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"error": err,
 		}).Error("Failed to decode JSON")
 		return nil, err
 	}
-	if conduitApi.ErrorCode != "" {
+	if conduitAPI.ErrorCode != "" {
 		logger.WithFields(log.Fields{
-			"PhabricatorErrorCode": conduitApi.ErrorCode,
-			"PhabricatorErrorInfo": conduitApi.ErrorInfo,
+			"PhabricatorErrorCode": conduitAPI.ErrorCode,
+			"PhabricatorErrorInfo": conduitAPI.ErrorInfo,
 		}).Error("Invalid Phabricator Request")
-		errMsg := fmt.Sprintf("[%s] %s", conduitApi.ErrorCode, conduitApi.ErrorInfo)
+		errMsg := fmt.Sprintf("[%s] %s", conduitAPI.ErrorCode, conduitAPI.ErrorInfo)
 		return nil, Error{errMsg}
 	}
-	return conduitApi.Result, nil
+	return conduitAPI.Result, nil
 }
 
-// Configurable options for a Phabricator instance
+// PhabOptions allows you to config the log level
+// and request timeouts for Phabricator
 type PhabOptions struct {
 	LogLevel string
 	Timeout  time.Duration
 }
 
+// Init discovers known API endpoints and defines
+// appropriate callbacks
 func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 	loglevel := "info"
 	p.timeout = 10 * time.Second
