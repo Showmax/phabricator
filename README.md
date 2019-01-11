@@ -97,6 +97,19 @@ func main() {
 }
 ```
 
+## Massive Concurrency
+MC can be turned on by the last argument to `Call()`.
+As opposed to standard mode, it doesn't wait for you to start
+consuming the data at all, instead it fires off consecutive
+requests to an endpoint at the earliest possibility - once the
+field `after` is known from the original Phab response.
+
+For example, if you requested an endpoint with just a few shy of 700 results,
+Phabricator will paginate them and force you to make 7 requests to get all of them.
+The regular mode would get blocked by you not consuming the results from the outpu
+channel and naturally hold off from further calls to Phabricator.
+MC mode don't care ;) MC mode just gets more data.
+
 ## Shortcomings
 * Only \*.search endpoints are supported for now.
 * Probably many more...
