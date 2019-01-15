@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -331,6 +332,7 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 type PhabOptions struct {
 	LogLevel string
 	Timeout  time.Duration
+	Out      io.Writer
 }
 
 // Init discovers known API endpoints and defines
@@ -346,6 +348,9 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 			p.timeout = opts.Timeout
 		} else {
 			return errors.New("Negative timeout specified")
+		}
+		if opts.Out != nil {
+			logger.SetOutput(opts.Out)
 		}
 	}
 	p.client = &http.Client{Timeout: p.timeout}
