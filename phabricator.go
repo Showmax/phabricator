@@ -271,6 +271,7 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 	}()
 	go func() {
 		defer close(resultChan)
+		defer close(errorChan)
 		for jsonData := range dataChan {
 			t := reflect.New(typ).Interface()
 			err := json.Unmarshal(jsonData, t)
