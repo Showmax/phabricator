@@ -99,6 +99,8 @@ type EndpointArguments interface{}
 
 func (ei endpointInfo) String() string {
 	var builder strings.Builder
+	// Gosec will complain about unchecked WriteString errors
+	// but if you look at the code, WriteString always returns nil... (Golang 1.11)
 	builder.WriteString(fmt.Sprintf("\tDescription: %s\n", ei.Description))
 	builder.WriteString(fmt.Sprintf("\tParams:\n"))
 	for param, desc := range ei.Params {
