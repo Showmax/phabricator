@@ -122,7 +122,7 @@ func (cr conduitQueryResponse) String() string {
 	return builder.String()
 }
 
-type endpointCallback func(ctx context.Context, endpoint string, params endpointInfo, arguments EndpointArguments, typ reflect.Type) (<-chan interface{}, <-chan error)
+type endpointCallback func(ctx context.Context, endpoint string, params endpointInfo, arguments EndpointArguments, typ reflect.Type) <-chan interface{}
 
 // Phabricator wraps around the API calls
 // bound to a single API root
@@ -137,7 +137,7 @@ type Phabricator struct {
 
 // Call ENDPOINT with ARGUMENTS, using the callback CB to
 // pass results to the caller
-func (p *Phabricator) Call(ctx context.Context, endpoint string, arguments EndpointArguments, typ interface{}) (<-chan interface{}, <-chan error) {
+func (p *Phabricator) Call(ctx context.Context, endpoint string, arguments EndpointArguments, typ interface{}) <-chan interface{} {
 	handler, defined := p.endpoints[endpoint]
 	if !defined {
 		errMsg := "No callback defined for endpoint"
@@ -145,7 +145,7 @@ func (p *Phabricator) Call(ctx context.Context, endpoint string, arguments Endpo
 		logger.WithFields(log.Fields{
 			"endpoint": endpoint,
 		}).Error(errMsg)
-		return nil, nil
+		return nil
 	}
 	t := reflect.TypeOf(typ) // TODO pointer types
 	return handler(ctx, endpoint, p.apiInfo[endpoint], arguments, t)
@@ -180,10 +180,9 @@ func (p *Phabricator) postRequest(endpoint, postData string) ([]byte, error) {
 	return body, nil
 }
 
-func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einfo endpointInfo, arguments EndpointArguments, typ reflect.Type) (<-chan interface{}, <-chan error) {
+func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einfo endpointInfo, arguments EndpointArguments, typ reflect.Type) <-chan interface{} {
 	queryArgs, err := query.Values(arguments)
 	resultChan := make(chan interface{}, maxBufferedResponses)
-	errorChan := make(chan error)
 	dataChan := make(chan json.RawMessage, maxBufferedResponses)
 
 	if err != nil {
@@ -191,8 +190,8 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 			"error":    err,
 			"endpoint": endpoint,
 		}).Error("Failed to encode endpoint query arguments")
-		errorChan <- err
-		return resultChan, errorChan
+		resultChan <- err
+		return resultChan
 	}
 	data := queryArgs.Encode()
 	data = fmt.Sprintf("%s=%s&%s", "api.token", p.apiToken, data)
@@ -224,7 +223,7 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 						"endpoint":  endpoint,
 						"after":     after,
 					}).Error("Request to Phabricator failed")
-					errorChan <- err
+					resultChan <- err
 					return ""
 				}
 				norm, exists := normalization[endpoint]
@@ -237,7 +236,7 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 					logger.WithFields(log.Fields{
 						"error": err,
 					}).Error("Failed to decode JSON")
-					errorChan <- err
+					resultChan <- err
 					return ""
 				}
 				if baseResp.ErrorCode != "" {
@@ -245,7 +244,7 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 						"PhabricatorErrorCode": baseResp.ErrorCode,
 						"PhabricatorErrorInfo": baseResp.ErrorInfo,
 					}).Error("Invalid Phabricator Request")
-					errorChan <- err
+					resultChan <- err
 					return ""
 				}
 				wg.Add(1)
@@ -271,19 +270,18 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 	}()
 	go func() {
 		defer close(resultChan)
-		defer close(errorChan)
 		for jsonData := range dataChan {
 			t := reflect.New(typ).Interface()
 			err := json.Unmarshal(jsonData, t)
 			if err != nil {
 				logger.WithError(err).Error("Failed to convert JSON to user-supplied type")
-				errorChan <- err
+				resultChan <- err
 				continue
 			}
 			resultChan <- t
 		}
 	}()
-	return resultChan, errorChan
+	return resultChan
 }
 
 func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
