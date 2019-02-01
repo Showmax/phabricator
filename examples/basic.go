@@ -39,15 +39,14 @@ func main() {
 	if tickets == nil || errors == nil {
 		log.Fatal("Non-existent endpoint")
 	}
-	for {
-		select {
-		case e := <-errors:
-			log.Print(e)
-			cancelCtx()
-			break
-		case t := <-tickets:
-			ticket := t.(*phabTypes.Ticket)
-			fmt.Printf("T%d: %s\n", ticket.Id, ticket.Fields.Name)
-		}
+	for e := range errors {
+		log.Print(e)
+		cancelCtx()
+		return
 	}
+	for t := range tickets {
+		ticket := t.(*phabTypes.Ticket)
+		fmt.Printf("T%d: %s\n", ticket.Id, ticket.Fields.Name)
+	}
+	cancelCtx()
 }
