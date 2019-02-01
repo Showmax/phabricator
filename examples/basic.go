@@ -1,31 +1,14 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
 	"time"
 
 	"go.showmax.cc/phabricator"
-	phab_types "go.showmax.cc/phabricator/types"
+	phabTypes "go.showmax.cc/phabricator/types"
 )
-
-/*
-This callback gets fed the results of the API calls as unparsed JSON messages.
-It's up to the callback to parse the objects.
-*/
-func TicketResponseCallback(tickets chan<- interface{}, data <-chan json.RawMessage) error {
-	defer close(tickets)
-	for json_data := range data {
-		var t phab_types.Ticket
-		err := json.Unmarshal(json_data, &t)
-		if err != nil {
-			return err
-		}
-		tickets <- t
-	}
-	return nil
-}
 
 /*
 This short program prints the names and ids of all the tickets created by the
@@ -40,23 +23,31 @@ func main() {
 
 	/* Create constraints for the search:
 	 */
-	ticket_args := phab_types.TicketSearchArgs{}
+	ticketArgs := phabTypes.TicketSearchArgs{}
 
 	// Include the PHIDs of people watching the tickets in the results
-	ticket_args.Attachments.Subscribers = true
+	ticketArgs.Attachments.Subscribers = true
 	// Only search the tickets the current user has authored
-	ticket_args.QueryKey = "authored"
+	ticketArgs.QueryKey = "authored"
 	// Only consider tickets created in the past week in the search
 	now := time.Now()
-	seven_days_ago := now.AddDate(0, 0, -7)
-	ticket_args.Constraints.CreatedStart = seven_days_ago.Unix()
+	sevenDaysAgo := now.AddDate(0, 0, -7)
+	ticketArgs.Constraints.CreatedStart = sevenDaysAgo.Unix()
 
-	tickets, err := phab.Call("maniphest.search", ticket_args, TicketResponseCallback, false)
-	if err != nil {
-		log.Fatal(err)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	tickets, errors := phab.Call(ctx, "maniphest.search", ticketArgs, phabTypes.Ticket{})
+	if tickets == nil || errors == nil {
+		log.Fatal("Non-existent endpoint")
 	}
-	for t := range tickets {
-		ticket := t.(phab_types.Ticket)
-		fmt.Printf("T%d: %s\n", ticket.Id, ticket.Fields.Name)
+	for {
+		select {
+		case e := <-errors:
+			log.Print(e)
+			cancelCtx()
+			break
+		case t := <-tickets:
+			ticket := t.(*phabTypes.Ticket)
+			fmt.Printf("T%d: %s\n", ticket.Id, ticket.Fields.Name)
+		}
 	}
 }

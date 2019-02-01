@@ -9,6 +9,7 @@ package phabricator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -120,7 +122,7 @@ func (cr conduitQueryResponse) String() string {
 	return builder.String()
 }
 
-type endpointCallback func(endpoint string, params endpointInfo, arguments EndpointArguments, cb PhabResultCallback, massivelyConcurrent bool) (<-chan interface{}, error)
+type endpointCallback func(ctx context.Context, endpoint string, params endpointInfo, arguments EndpointArguments, typ reflect.Type) (<-chan interface{}, <-chan error)
 
 // Phabricator wraps around the API calls
 // bound to a single API root
@@ -135,7 +137,7 @@ type Phabricator struct {
 
 // Call ENDPOINT with ARGUMENTS, using the callback CB to
 // pass results to the caller
-func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb PhabResultCallback, massivelyConcurrent bool) (<-chan interface{}, error) {
+func (p *Phabricator) Call(ctx context.Context, endpoint string, arguments EndpointArguments, typ interface{}) (<-chan interface{}, <-chan error) {
 	handler, defined := p.endpoints[endpoint]
 	if !defined {
 		errMsg := "No callback defined for endpoint"
@@ -143,10 +145,10 @@ func (p *Phabricator) Call(endpoint string, arguments EndpointArguments, cb Phab
 		logger.WithFields(log.Fields{
 			"endpoint": endpoint,
 		}).Error(errMsg)
-		return nil, Error{errMsg}
+		return nil, nil
 	}
-	resp, err := handler(endpoint, p.apiInfo[endpoint], arguments, cb, massivelyConcurrent)
-	return resp, err
+	t := reflect.TypeOf(typ) // TODO pointer types
+	return handler(ctx, endpoint, p.apiInfo[endpoint], arguments, t)
 }
 
 func (p *Phabricator) postRequest(endpoint, postData string) ([]byte, error) {
@@ -178,18 +180,22 @@ func (p *Phabricator) postRequest(endpoint, postData string) ([]byte, error) {
 	return body, nil
 }
 
-func (p *Phabricator) endpointHandler(endpoint string, einfo endpointInfo, arguments EndpointArguments, cb PhabResultCallback, massivelyConcurrent bool) (<-chan interface{}, error) {
+func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einfo endpointInfo, arguments EndpointArguments, typ reflect.Type) (<-chan interface{}, <-chan error) {
 	queryArgs, err := query.Values(arguments)
+	resultChan := make(chan interface{}, maxBufferedResponses)
+	errorChan := make(chan error)
+	dataChan := make(chan json.RawMessage, maxBufferedResponses)
+
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"error":    err,
 			"endpoint": endpoint,
 		}).Error("Failed to encode endpoint query arguments")
-		return nil, err
+		errorChan <- err
+		return resultChan, errorChan
 	}
 	data := queryArgs.Encode()
 	data = fmt.Sprintf("%s=%s&%s", "api.token", p.apiToken, data)
-	dataChan := make(chan json.RawMessage, maxBufferedResponses)
 	path, _ := url.Parse(endpoint)
 	fullEndpoint := p.apiEndpoint.ResolveReference(path).String()
 	go func() {
@@ -197,6 +203,11 @@ func (p *Phabricator) endpointHandler(endpoint string, einfo endpointInfo, argum
 		defer close(dataChan)
 		after := ""
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			// Fire off the next response as soon as we know the value of "after"
 			// from the previous one
 			after = func(after string) string {
@@ -213,6 +224,7 @@ func (p *Phabricator) endpointHandler(endpoint string, einfo endpointInfo, argum
 						"endpoint":  endpoint,
 						"after":     after,
 					}).Error("Request to Phabricator failed")
+					errorChan <- err
 					return ""
 				}
 				norm, exists := normalization[endpoint]
@@ -225,6 +237,7 @@ func (p *Phabricator) endpointHandler(endpoint string, einfo endpointInfo, argum
 					logger.WithFields(log.Fields{
 						"error": err,
 					}).Error("Failed to decode JSON")
+					errorChan <- err
 					return ""
 				}
 				if baseResp.ErrorCode != "" {
@@ -232,33 +245,43 @@ func (p *Phabricator) endpointHandler(endpoint string, einfo endpointInfo, argum
 						"PhabricatorErrorCode": baseResp.ErrorCode,
 						"PhabricatorErrorInfo": baseResp.ErrorInfo,
 					}).Error("Invalid Phabricator Request")
+					errorChan <- err
 					return ""
 				}
-				if massivelyConcurrent {
-					wg.Add(1)
-					go func() {
-						defer wg.Done()
-						for _, m := range baseResp.Result.Data {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for _, m := range baseResp.Result.Data {
+						select {
+						case <-ctx.Done():
+							return
+						default:
 							dataChan <- m
 						}
-					}()
-				} else {
-					for _, m := range baseResp.Result.Data {
-						dataChan <- m
 					}
-				}
+				}()
 
 				return baseResp.Result.Cursor.After
 			}(after)
 			if after == "" {
-				wg.Wait()
 				break
 			}
 		}
+		wg.Wait()
 	}()
-	resultChan := make(chan interface{}, maxBufferedResponses)
-	go cb(resultChan, dataChan)
-	return resultChan, nil
+	go func() {
+		defer close(resultChan)
+		for jsonData := range dataChan {
+			t := reflect.New(typ).Interface()
+			err := json.Unmarshal(jsonData, t)
+			if err != nil {
+				errorChan <- err
+				continue
+			}
+			resultChan <- t
+		}
+	}()
+	return resultChan, errorChan
 }
 
 func (p *Phabricator) loadEndpoints(einfo map[string]endpointInfo) {
