@@ -255,8 +255,8 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 						select {
 						case <-ctx.Done():
 							return
-						default:
-							dataChan <- m
+						case dataChan <- m:
+							logger.Debug("Sending a Phabricator object for processing")
 						}
 					}
 				}()
@@ -276,6 +276,7 @@ func (p *Phabricator) endpointHandler(ctx context.Context, endpoint string, einf
 			t := reflect.New(typ).Interface()
 			err := json.Unmarshal(jsonData, t)
 			if err != nil {
+				logger.WithError(err).Error("Failed to convert JSON to user-supplied type")
 				errorChan <- err
 				continue
 			}
