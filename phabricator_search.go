@@ -85,7 +85,7 @@ func (p *Phabricator) searchEndpointHandler(ctx context.Context, endpoint string
 					postData = fmt.Sprintf("%s&after=%s", postData, after)
 				}
 
-				body, err := p.postRequest(fullEndpoint, postData)
+				body, err := p.postRequest(ctx, fullEndpoint, postData)
 				if err != nil {
 					logger.WithFields(log.Fields{
 						"error":     err,

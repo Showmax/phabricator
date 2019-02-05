@@ -9,6 +9,7 @@ package phabricator
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -114,8 +115,9 @@ type Phabricator struct {
 	timeout         time.Duration
 }
 
-func (p *Phabricator) postRequest(endpoint, postData string) ([]byte, error) {
+func (p *Phabricator) postRequest(ctx context.Context, endpoint, postData string) ([]byte, error) {
 	req, err := http.NewRequest("POST", endpoint, strings.NewReader(postData))
+	req = req.WithContext(ctx)
 	// We delay error reporting to the caller, which has
 	// more human-readable data to report
 	if err != nil {

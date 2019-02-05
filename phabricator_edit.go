@@ -78,7 +78,7 @@ func (p *Phabricator) editEndpointHandler(ctx context.Context, endpoint string, 
 	path, _ := url.Parse(endpoint)
 	fullEndpoint := p.apiEndpoint.ResolveReference(path).String()
 
-	body, err := p.postRequest(fullEndpoint, data)
+	body, err := p.postRequest(ctx, fullEndpoint, data)
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"error":     err,
