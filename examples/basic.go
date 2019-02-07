@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"go.showmax.cc/phabricator"
-	phabTypes "go.showmax.cc/phabricator/types"
+	"phabricator"
+	phabTypes "phabricator/types"
 )
 
 /*
@@ -36,7 +36,7 @@ func main() {
 	// The context allows you to cancel the current call prematurely
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
-	results := phab.Call(ctx, "maniphest.search", ticketArgs, phabTypes.Ticket{})
+	results := phab.CallSearch(ctx, "maniphest.search", ticketArgs, phabTypes.Ticket{})
 	if results == nil {
 		log.Fatal("Non-existent endpoint")
 	}
