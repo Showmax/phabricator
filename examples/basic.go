@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"phabricator"
-	phabTypes "phabricator/types"
+	"go.showmax.cc/phabricator"
+	phabTypes "go.showmax.cc/phabricator/types"
 )
 
 /*
