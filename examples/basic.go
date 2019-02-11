@@ -16,8 +16,8 @@ current use in the past week.
 */
 func main() {
 	var phab phabricator.Phabricator
-	tok := "<API-TOKEN>"
-	err := phab.Init("https://phabricator.showmax.cc/api/", tok, &phabricator.PhabOptions{
+	err := phab.Init(&phabricator.PhabOptions{
+		API:      "https://phabricator.showmax.cc/api/",
 		LogLevel: "error", // Must be a level recognized by the logrus library
 		Timeout:  10 * time.Second,
 	})

@@ -17,6 +17,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"os/user"
+	"path"
 	"strings"
 	"time"
 
@@ -220,14 +223,60 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 // PhabOptions allows you to config the log level
 // and request timeouts for Phabricator
 type PhabOptions struct {
+	// Root of your Phabricator instance's API
+	API string
+	// Authentication token. If empty, phabricator will try to look it up
+	// at ~/.arcrc
+	Token string
+	// A LogRus compatible loglevel
 	LogLevel string
-	Timeout  time.Duration
-	Out      io.Writer
+	// a timeout for the initial endpoint discovery. Defaults to 10 seconds
+	// if empty
+	Timeout time.Duration
+	// Where to redirect logger Output to. Defaults to os.Stdout
+	Out io.Writer
+}
+
+type arcrcHost struct {
+	Token string `json:"token"`
+}
+type arcrcConfig struct {
+	Hosts  map[string]arcrcHost `json:"hosts"`
+	Config struct {
+		Default string `json:"default"`
+	} `json:"default"`
+}
+
+func readTokenFromRC(API string) (string, error) {
+	whoami, err := user.Current()
+	if err != nil {
+		msg := "Unable to determine current user"
+		logger.Error(msg)
+		return "", errors.New(msg)
+	}
+
+	arcrcPath := path.Join(whoami.HomeDir, ".arcrc")
+	arcrc, err := os.Open(arcrcPath)
+	if err != nil {
+		msg := "Unable to open ~/.arcrc"
+		logger.Error(msg)
+		return "", errors.New(msg)
+	}
+
+	var arcCfg arcrcConfig
+	json.NewDecoder(arcrc).Decode(&arcCfg)
+	hostInfo, exists := arcCfg.Hosts[API]
+	if exists {
+		return hostInfo.Token, nil
+	}
+	msg := "No token found in .arcrc for given API endpoint"
+	logger.WithField("endpoint", API).Error(msg)
+	return "", errors.New(msg)
 }
 
 // Init discovers known API endpoints and defines
-// appropriate callbacks
-func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
+// appropriate callback
+func (p *Phabricator) Init(opts *PhabOptions) error {
 	loglevel := "info"
 	p.timeout = 10 * time.Second
 	if opts != nil {
@@ -253,23 +302,31 @@ func (p *Phabricator) Init(endpoint, token string, opts *PhabOptions) error {
 	// Display file & line info - needs a relatively new version of logrus
 	logger.SetReportCaller(true)
 
-	api, err := url.Parse(endpoint)
+	api, err := url.Parse(opts.API)
 	if err != nil {
 		logger.WithFields(log.Fields{
-			"url":   endpoint,
+			"url":   opts.API,
 			"error": err,
 		}).Error("Unable to parse the API URL")
 		return Error{err.Error()}
 	}
 
 	logger.WithFields(log.Fields{
-		"url":      endpoint,
+		"url":      opts.API,
 		"loglevel": loglevel,
 		"timeout":  p.timeout,
 	}).Debug("Initializing a Phabricator instance")
 
 	p.apiEndpoint = api
-	p.apiToken = token
+	if opts.Token == "" {
+		p.apiToken, err = readTokenFromRC(opts.API)
+		if err != nil {
+			return err
+		}
+	} else {
+		p.apiToken = opts.Token
+	}
+
 	ep, err := p.queryEndpoints()
 	if err != nil {
 		return err
