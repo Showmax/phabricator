@@ -7,7 +7,8 @@ import (
 
 func TestPhabUnknownLogLevel(t *testing.T) {
 	var phab Phabricator
-	err := phab.Init("localhost", "<TOKEN>", &PhabOptions{
+	err := phab.Init(&PhabOptions{
+		API:      "localhost",
 		LogLevel: "apocalypse",
 	})
 	if err == nil {
@@ -17,7 +18,8 @@ func TestPhabUnknownLogLevel(t *testing.T) {
 
 func TestPhabNegativeTimeout(t *testing.T) {
 	var phab Phabricator
-	err := phab.Init("localhost", "<TOKEN>", &PhabOptions{
+	err := phab.Init(&PhabOptions{
+		API:     "localhost",
 		Timeout: -1 * time.Second,
 	})
 	if err == nil {
