@@ -285,7 +285,7 @@ func (p *Phabricator) Init(opts *PhabOptions) error {
 		}
 		if opts.Timeout > 0 {
 			p.timeout = opts.Timeout
-		} else {
+		} else if opts.Timeout < 0 {
 			return errors.New("Negative timeout specified")
 		}
 		if opts.Out != nil {
