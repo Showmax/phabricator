@@ -8,6 +8,7 @@ This library wraps around search APIs for the most common objects:
 * Tickets
 * Users
 * Projects
+* Diffs
 * Revisions
 * Repositories
 
@@ -16,6 +17,11 @@ See examples for details.
 
 You can also call any .edit API endpoint, providing you know the transactions
 it can handle.
+
+The calls to phabricator through this lib can be split into three categories:
+* CallSearch - where you expect to get an array of zero or more results
+* CallEdit - where you edit or create a single object
+* WhoAmI - user.whoami
 
 ## Architecture
 The library is inspired by
