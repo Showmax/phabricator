@@ -70,11 +70,11 @@ func editArgsToPost(arguments *EditArguments) (string, error) {
 }
 
 func (p *Phabricator) editEndpointHandler(ctx context.Context, endpoint string, einfo endpointInfo, arguments *EditArguments) error {
-	data, err := editArgsToPost(arguments)
+	queryArgs, err := editArgsToPost(arguments)
 	if err != nil {
 		return err
 	}
-	data = fmt.Sprintf("api.token=%s&%s", p.apiToken, data)
+	data := fmt.Sprintf("api.token=%s&%s", p.apiToken, queryArgs)
 	path, _ := url.Parse(endpoint)
 	fullEndpoint := p.apiEndpoint.ResolveReference(path).String()
 
@@ -82,7 +82,7 @@ func (p *Phabricator) editEndpointHandler(ctx context.Context, endpoint string, 
 	if err != nil {
 		logger.WithFields(log.Fields{
 			"error":     err,
-			"post_data": data,
+			"post_data": queryArgs,
 			"endpoint":  endpoint,
 		}).Error("Request to Phabricator failed")
 		return err
