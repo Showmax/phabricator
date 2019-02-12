@@ -74,6 +74,7 @@ func (p *Phabricator) searchEndpointHandler(ctx context.Context, endpoint string
 		for {
 			select {
 			case <-ctx.Done():
+				logger.Debug("Context cancellation")
 				return
 			default:
 			}
@@ -123,6 +124,7 @@ func (p *Phabricator) searchEndpointHandler(ctx context.Context, endpoint string
 					for _, m := range baseResp.Result.Data {
 						select {
 						case <-ctx.Done():
+							logger.Debug("Context cancellation")
 							return
 						case dataChan <- m:
 							logger.Debug("Sending a Phabricator object for processing")
