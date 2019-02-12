@@ -64,7 +64,7 @@ func editArgsToPost(arguments *EditArguments) (string, error) {
 
 	for index, tx := range arguments.Transactions {
 		builder.WriteString(fmt.Sprintf("&transactions[%d][type]=%s", index, tx.Type))
-		builder.WriteString(fmt.Sprintf("&transactions[%d][value]=%s", index, tx.Value))
+		builder.WriteString(fmt.Sprintf("&transactions[%d][value]=%v", index, tx.Value))
 	}
 	return builder.String(), nil
 }
@@ -78,6 +78,10 @@ func (p *Phabricator) editEndpointHandler(ctx context.Context, endpoint string, 
 	path, _ := url.Parse(endpoint)
 	fullEndpoint := p.apiEndpoint.ResolveReference(path).String()
 
+	logger.WithFields(log.Fields{
+		"endpoint":   fullEndpoint,
+		"query_args": queryArgs,
+	}).Debug("Sending request")
 	body, err := p.postRequest(ctx, fullEndpoint, data)
 	if err != nil {
 		logger.WithFields(log.Fields{
