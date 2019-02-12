@@ -15,7 +15,7 @@ func (pt *PhabTransaction) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	return []byte(fmt.Sprintf(`{ "type": %s, "value": %s }`, pt.Type, string(val))), nil
+	return []byte(fmt.Sprintf(`{ "type": %s, "value": %v }`, pt.Type, val)), nil
 }
 
 func NewTransaction(tx string, val interface{}) PhabTransaction {
