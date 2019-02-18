@@ -115,6 +115,8 @@ func (p *Phabricator) searchEndpointHandler(ctx context.Context, endpoint string
 						"PhabricatorErrorCode": baseResp.ErrorCode,
 						"PhabricatorErrorInfo": baseResp.ErrorInfo,
 					}).Error("Invalid Phabricator Request")
+
+					err := fmt.Errorf("[%s] %s", baseResp.ErrorCode, baseResp.ErrorInfo)
 					resultChan <- err
 					return ""
 				}

@@ -214,8 +214,8 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 			"PhabricatorErrorCode": conduitAPI.ErrorCode,
 			"PhabricatorErrorInfo": conduitAPI.ErrorInfo,
 		}).Error("Invalid Phabricator Request")
-		errMsg := fmt.Sprintf("[%s] %s", conduitAPI.ErrorCode, conduitAPI.ErrorInfo)
-		return nil, Error{errMsg}
+		err := fmt.Errorf("[%s] %s", conduitAPI.ErrorCode, conduitAPI.ErrorInfo)
+		return nil, err
 	}
 	return conduitAPI.Result, nil
 }
@@ -308,7 +308,7 @@ func (p *Phabricator) Init(opts *PhabOptions) error {
 			"url":   opts.API,
 			"error": err,
 		}).Error("Unable to parse the API URL")
-		return Error{err.Error()}
+		return err
 	}
 
 	logger.WithFields(log.Fields{

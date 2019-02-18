@@ -102,7 +102,7 @@ func (p *Phabricator) editEndpointHandler(ctx context.Context, endpoint string, 
 			"PhabricatorErrorCode": baseResp.ErrorCode,
 			"PhabricatorErrorInfo": baseResp.ErrorInfo,
 		}).Error("Invalid Phabricator Request")
-		return err
+		return fmt.Errorf("[%s] %s", baseResp.ErrorCode, baseResp.ErrorInfo)
 	}
 	logger.WithFields(structs.Map(baseResp)).Debug("Response")
 	return nil
