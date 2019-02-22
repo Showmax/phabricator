@@ -34,6 +34,7 @@ type TicketSearchArgs struct {
 		Projects      []string `url:"projects,omitempty,brackets"`
 		Spaces        []string `url:"spaces,omitempty,brackets"`
 	} `url:"constraints,omitempty"`
+	Order string `url:"order,omitempty"`
 }
 
 type TicketAttachmentColumn struct {

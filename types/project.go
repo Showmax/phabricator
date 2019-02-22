@@ -23,6 +23,7 @@ type ProjectSearchArgs struct {
 		Query       string   `url:"query,omitempty"`
 		Spaces      []string `url:"spaces,omitempty,brackets"`
 	} `url:"constraints"`
+	Order string `url:"order,omitempty"`
 }
 type ProjectMember struct {
 	Phid string `json:"phid"`

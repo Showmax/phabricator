@@ -21,6 +21,7 @@ type RevisionSearchArgs struct {
 		Subscribers      []string `url:"subscribers,omitempty,brackets"`
 		Projects         []string `url:"projects,omitempty,brackets"`
 	} `url:"constraints,omitempty"`
+	Order string `url:"order,omitempty"`
 }
 type RevisionReviewer struct {
 	ReviewerPHID string `json:"reviewerPHID"`

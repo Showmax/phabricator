@@ -19,6 +19,7 @@ type RepositorySearchArgs struct {
 		Projects   []string `url:"projects,omitempty,brackets"`
 		Spaces     []string `url:"spaces,omitempty,brackets"`
 	} `url:"constraints,omitempty"`
+	Order string `url:"order,omitempty"`
 }
 type RepositoryUri struct {
 	Id     string `json:"id"`

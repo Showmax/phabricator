@@ -27,6 +27,8 @@ func main() {
 
 	// Create constraints for the search:
 	ticketArgs := phabTypes.TicketSearchArgs{QueryKey: "authored"}
+	// Sort by title
+	ticketArgs.Order = "title"
 	// Include the PHIDs of people watching the tickets in the results
 	ticketArgs.Attachments.Subscribers = true
 	// Only consider tickets created in the past 30 days in the search

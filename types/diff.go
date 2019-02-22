@@ -10,6 +10,7 @@ type DiffSearchArgs struct {
 		PHIDs         []string `url:"phids,omitempty,brackets"`
 		RevisionPHIDs []string `url:"revisionPHIDs,omitempty,brackets"`
 	} `url:"constraints,omitempty"`
+	Order string `url:"order,omitempty"`
 }
 
 type DiffRef struct {

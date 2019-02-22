@@ -19,6 +19,7 @@ type UserSearchArgs struct {
 		ModifiedStart int64    `url:"modifiedStart,omitempty"`
 		Query         string   `url:"query,omitempty"`
 	} `url:"constraints"`
+	Order string `url:"order,omitempty"`
 }
 type User struct {
 	Id     int    `json:"id"`
