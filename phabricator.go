@@ -115,7 +115,6 @@ type Phabricator struct {
 	searchEndpoints map[string]searchEndpointCallback
 	editEndpoints   map[string]editEndpointCallback
 	client          *http.Client
-	timeout         time.Duration
 }
 
 func (p *Phabricator) postRequest(ctx context.Context, endpoint, postData string) ([]byte, error) {
@@ -223,18 +222,22 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 // PhabOptions allows you to config the log level
 // and request timeouts for Phabricator
 type PhabOptions struct {
-	// Root of your Phabricator instance's API
+	// Root of your Phabricator instance's API. If not specified, will be
+	// read from ~/.arcrc. If API is left empty and you have more than one
+	// host specified in ~/.arcrc, the initialisation will fail.
 	API string
 	// Authentication token. If empty, phabricator will try to look it up
-	// at ~/.arcrc
+	// at ~/.arcrc based on API. Must be omitted if API is omitted.
 	Token string
-	// A LogRus compatible loglevel
+	// A LogRus compatible loglevel. Default is "info".
 	LogLevel string
 	// a timeout for the initial endpoint discovery. Defaults to 10 seconds
 	// if empty
 	Timeout time.Duration
-	// Where to redirect logger Output to. Defaults to os.Stdout
+	// Where to redirect logger output to. Defaults to os.Stdout
 	Out io.Writer
+	// Alternate file to read from. If nil, will read ~/.arcrc
+	Arcrc io.Reader
 }
 
 type arcrcHost struct {
@@ -247,24 +250,60 @@ type arcrcConfig struct {
 	} `json:"default"`
 }
 
-func readTokenFromRC(API string) (string, error) {
-	whoami, err := user.Current()
-	if err != nil {
-		msg := "Unable to determine current user"
-		logger.Error(msg)
-		return "", errors.New(msg)
-	}
+func arcConfig(arcrc io.Reader) (*arcrcConfig, error) {
+	if arcrc == nil {
+		whoami, err := user.Current()
+		if err != nil {
+			msg := "Unable to determine current user"
+			logger.Error(msg)
+			return nil, errors.New(msg)
+		}
 
-	arcrcPath := path.Join(whoami.HomeDir, ".arcrc")
-	arcrc, err := os.Open(arcrcPath)
-	if err != nil {
-		msg := "Unable to open ~/.arcrc"
-		logger.Error(msg)
-		return "", errors.New(msg)
+		arcrcPath := path.Join(whoami.HomeDir, ".arcrc")
+		arcrc, err = os.Open(arcrcPath)
+		if err != nil {
+			msg := "Unable to open ~/.arcrc"
+			logger.Error(msg)
+			return nil, errors.New(msg)
+		}
 	}
 
 	var arcCfg arcrcConfig
-	json.NewDecoder(arcrc).Decode(&arcCfg)
+	err := json.NewDecoder(arcrc).Decode(&arcCfg)
+	if err != nil {
+		logger.WithError(err).Error("Unable to parse .arcrc")
+		return nil, err
+	}
+	return &arcCfg, nil
+}
+
+func readAuthFromRC(arcrcFile io.Reader) (string, string, error) {
+	arcCfg, err := arcConfig(arcrcFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	if len(arcCfg.Hosts) != 1 {
+		msg := `Cannot determine a phabricator host to connect to.
+Exactly one must be defined in .arcrc.`
+		logger.Error(msg)
+		return "", "", errors.New(msg)
+	}
+
+	var hostURI string
+	var host arcrcHost
+	for hostURI, host = range arcCfg.Hosts {
+		break
+	}
+	return hostURI, host.Token, nil
+}
+
+func readTokenFromRC(arcrcFile io.Reader, API string) (string, error) {
+	arcCfg, err := arcConfig(arcrcFile)
+	if err != nil {
+		return "", err
+	}
+
 	hostInfo, exists := arcCfg.Hosts[API]
 	if exists {
 		return hostInfo.Token, nil
@@ -278,21 +317,31 @@ func readTokenFromRC(API string) (string, error) {
 // appropriate callback
 func (p *Phabricator) Init(opts *PhabOptions) error {
 	loglevel := "info"
-	p.timeout = 10 * time.Second
+	timeout := 10 * time.Second
+	var arcrcFile io.Reader
 	if opts != nil {
 		if opts.LogLevel != "" {
 			loglevel = opts.LogLevel
 		}
 		if opts.Timeout > 0 {
-			p.timeout = opts.Timeout
+			timeout = opts.Timeout
 		} else if opts.Timeout < 0 {
 			return errors.New("Negative timeout specified")
 		}
 		if opts.Out != nil {
 			logger.SetOutput(opts.Out)
 		}
+		if opts.Token != "" && opts.API == "" {
+			msg := "Token specified without an API endpoint"
+			logger.Error(msg)
+			return errors.New(msg)
+		}
+		if opts.Arcrc != nil {
+			arcrcFile = opts.Arcrc
+		}
+		p.apiToken = opts.Token
 	}
-	p.client = &http.Client{Timeout: p.timeout}
+	p.client = &http.Client{Timeout: timeout}
 
 	level, err := log.ParseLevel(loglevel)
 	if err != nil {
@@ -302,38 +351,39 @@ func (p *Phabricator) Init(opts *PhabOptions) error {
 	// Display file & line info - needs a relatively new version of logrus
 	logger.SetReportCaller(true)
 
-	api, err := url.Parse(opts.API)
-	if err != nil {
+	logger.WithFields(log.Fields{
+		"url":      opts.API,
+		"loglevel": loglevel,
+	}).Info("Initializing a Phabricator instance")
+
+	if p.apiToken == "" {
+		if opts.API == "" {
+			if opts.API, p.apiToken, err = readAuthFromRC(arcrcFile); err != nil {
+				return err
+			}
+		} else {
+			if p.apiToken, err = readTokenFromRC(arcrcFile, opts.API); err != nil {
+				return err
+			}
+		}
+	}
+
+	if api, err := url.Parse(opts.API); err != nil {
 		logger.WithFields(log.Fields{
 			"url":   opts.API,
 			"error": err,
 		}).Error("Unable to parse the API URL")
 		return err
-	}
-
-	logger.WithFields(log.Fields{
-		"url":      opts.API,
-		"loglevel": loglevel,
-		"timeout":  p.timeout,
-	}).Debug("Initializing a Phabricator instance")
-
-	p.apiEndpoint = api
-	if opts.Token == "" {
-		p.apiToken, err = readTokenFromRC(opts.API)
-		if err != nil {
-			return err
-		}
 	} else {
-		p.apiToken = opts.Token
+		p.apiEndpoint = api
 	}
 
-	ep, err := p.queryEndpoints()
-	if err != nil {
+	if ep, err := p.queryEndpoints(); err != nil {
 		return err
+	} else {
+		p.apiInfo = ep
 	}
 
-	p.apiInfo = ep
-	p.loadEndpoints(ep)
-
+	p.loadEndpoints(p.apiInfo)
 	return nil
 }
