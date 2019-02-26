@@ -313,6 +313,13 @@ func readTokenFromRC(arcrcFile io.Reader, API string) (string, error) {
 	return "", errors.New(msg)
 }
 
+func (p *Phabricator) ConduitURI() string {
+  if p.apiEndpoint == nil {
+    return ""
+  }
+  return p.apiEndpoint.String()
+}
+
 // Init discovers known API endpoints and defines
 // appropriate callback
 func (p *Phabricator) Init(opts *PhabOptions) error {
