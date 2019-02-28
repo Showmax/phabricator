@@ -204,8 +204,9 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 	err = json.Unmarshal(body, &conduitAPI)
 	if err != nil {
 		logger.WithFields(log.Fields{
-			"error": err,
-		}).Error("Failed to decode JSON")
+			"error":    err,
+			"endpoint": phabConduitQuery.String(),
+		}).Error("Failed to decode JSON from response")
 		return nil, err
 	}
 	if conduitAPI.ErrorCode != "" {
@@ -223,8 +224,9 @@ func (p *Phabricator) queryEndpoints() (map[string]endpointInfo, error) {
 // and request timeouts for Phabricator
 type PhabOptions struct {
 	// Root of your Phabricator instance's API. If not specified, will be
-	// read from ~/.arcrc. If API is left empty and you have more than one
-	// host specified in ~/.arcrc, the initialisation will fail.
+	// read from ~/.arcrc. If API is left empty, the library will attempt
+	// to find the API root and token based on your default Phabricator host.
+	// Run `arc get-config default` if you're unsure what your default is.
 	API string
 	// Authentication token. If empty, phabricator will try to look it up
 	// at ~/.arcrc based on API. Must be omitted if API is omitted.
@@ -247,7 +249,7 @@ type arcrcConfig struct {
 	Hosts  map[string]arcrcHost `json:"hosts"`
 	Config struct {
 		Default string `json:"default"`
-	} `json:"default"`
+	} `json:"config"`
 }
 
 func arcConfig(arcrc io.Reader) (*arcrcConfig, error) {
@@ -277,25 +279,39 @@ func arcConfig(arcrc io.Reader) (*arcrcConfig, error) {
 	return &arcCfg, nil
 }
 
-func readAuthFromRC(arcrcFile io.Reader) (string, string, error) {
+func readDefaultAuthFromRC(arcrcFile io.Reader) (string, string, error) {
 	arcCfg, err := arcConfig(arcrcFile)
 	if err != nil {
 		return "", "", err
 	}
 
-	if len(arcCfg.Hosts) != 1 {
-		msg := `Cannot determine a phabricator host to connect to.
-Exactly one must be defined in .arcrc.`
+	hostURI := arcCfg.Config.Default
+	if hostURI == "" {
+		msg := `Can't determine a default host to connect to. See
+https://www.mediawiki.org/w/index.php?title=Phabricator/Arcanist#Setup for
+details.`
 		logger.Error(msg)
 		return "", "", errors.New(msg)
 	}
 
-	var hostURI string
-	var host arcrcHost
-	for hostURI, host = range arcCfg.Hosts {
-		break
+	url, err := url.Parse(hostURI)
+	if err != nil {
+		msg := "Unable to parse default Phabricator URI"
+		logger.WithFields(log.Fields{
+			"error": err,
+			"url":   hostURI,
+		}).Error(msg)
+		return "", "", fmt.Errorf("%s: %s", msg, hostURI)
 	}
-	return hostURI, host.Token, nil
+	apiPath, _ := url.Parse("/api/")
+	apiURL := url.ResolveReference(apiPath).String()
+
+	host, found := arcCfg.Hosts[apiURL]
+	if !found {
+		return "", "", errors.New("No API config found for default Phabricator host")
+	}
+
+	return apiURL, host.Token, nil
 }
 
 func readTokenFromRC(arcrcFile io.Reader, API string) (string, error) {
@@ -313,11 +329,12 @@ func readTokenFromRC(arcrcFile io.Reader, API string) (string, error) {
 	return "", errors.New(msg)
 }
 
+// ConduitURI returns the root API endpoint that this instance is configured to
 func (p *Phabricator) ConduitURI() string {
-  if p.apiEndpoint == nil {
-    return ""
-  }
-  return p.apiEndpoint.String()
+	if p.apiEndpoint == nil {
+		return ""
+	}
+	return p.apiEndpoint.String()
 }
 
 // Init discovers known API endpoints and defines
@@ -365,7 +382,7 @@ func (p *Phabricator) Init(opts *PhabOptions) error {
 
 	if p.apiToken == "" {
 		if opts.API == "" {
-			if opts.API, p.apiToken, err = readAuthFromRC(arcrcFile); err != nil {
+			if opts.API, p.apiToken, err = readDefaultAuthFromRC(arcrcFile); err != nil {
 				return err
 			}
 		} else {
