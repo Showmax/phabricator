@@ -81,7 +81,6 @@ type Ticket struct {
 			Interact string `json:"interact"`
 			Edit     string `json:"edit"`
 		} `json:"policy"`
-		ShowmaxAppVersion string `json:"custom.showmax:app-version"`
 	} `json:"fields"`
 	Attachments struct {
 		Columns struct {
