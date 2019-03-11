@@ -13,11 +13,6 @@ type DiffSearchArgs struct {
 	Order string `url:"order,omitempty"`
 }
 
-type DiffRef struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
-}
-
 type DiffCommit struct {
 	Identifier string   `json:"identifier"`
 	Tree       string   `json:"tree"`
@@ -36,12 +31,12 @@ type Diff struct {
 	Type   string `json:"type"`
 	Phid   string `json:"phid"`
 	Fields struct {
-		RevisionPHID   string    `json:"revisionPHID"`
-		AuthorPHID     string    `json:"authorPHID"`
-		RepositoryPHID string    `json:"repositoryPHID"`
-		Refs           []DiffRef `json:"refs"`
-		DateCreated    int64     `json:"dateCreated"`
-		DateModified   int64     `json:"dateModified"`
+		RevisionPHID   string              `json:"revisionPHID"`
+		AuthorPHID     string              `json:"authorPHID"`
+		RepositoryPHID string              `json:"repositoryPHID"`
+		Refs           []map[string]string `json:"refs"`
+		DateCreated    int64               `json:"dateCreated"`
+		DateModified   int64               `json:"dateModified"`
 		Policy         struct {
 			View string `json:"view"`
 			Edit string `json:"edit"`
